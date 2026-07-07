@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genealogía Bíblica · Árbol Interactivo</title>
+    <meta name="description" content="Explorador visual interactivo del árbol genealógico bíblico con zoom, arrastre y fichas in-place.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ── Design tokens ────────────────────────────────────── */
+        :root {
+            --bg:        #f5f4f2;
+            --surface:   #ffffff;
+            --border:    #e4e2dc;
+            --text:      #1a1916;
+            --muted:     #7a7870;
+            --subtle:    #b0ada6;
+            --accent:    #1a56db;
+            --accent-bg: #eef3ff;
+            --m-node:    #dbeafe;
+            --m-border:  #93c5fd;
+            --m-dot:     #3b82f6;
+            --f-node:    #fce7f3;
+            --f-border:  #f9a8d4;
+            --f-dot:     #e879a0;
+            --line:      #d1cdc7;
+            --radius-sm: 7px;
+            --radius-md: 12px;
+        }
+        [data-theme="dark"] {
+            --bg:        #111110;
+            --surface:   #1c1b19;
+            --border:    #2e2c28;
+            --text:      #f0ede8;
+            --muted:     #888580;
+            --subtle:    #5a5753;
+            --accent:    #5b8def;
+            --accent-bg: #1a2340;
+            --m-node:    rgba(59,130,246,.1);
+            --m-border:  rgba(96,165,250,.35);
+            --m-dot:     #60a5fa;
+            --f-node:    rgba(244,114,182,.08);
+            --f-border:  rgba(244,114,182,.35);
+            --f-dot:     #f472b6;
+            --line:      #3a3835;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            font-size: 14px;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Top bar ──────────────────────────────────────────── */
+        .topbar {
+            height: 52px;
+            min-height: 52px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 20px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            z-index: 50;
+        }
+        .topbar-brand {
+            font-size: 13px; font-weight: 600; color: var(--text);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .topbar-brand-dot { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; }
+        .topbar-sep { flex: 1; }
+        .topbar-btn {
+            display: flex; align-items: center; gap: 5px;
+            padding: 5px 11px; font-size: 12px; font-weight: 500;
+            color: var(--muted); background: transparent;
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+            cursor: pointer; text-decoration: none; font-family: inherit;
+        }
+        .topbar-btn svg { width: 13px; height: 13px; fill: currentColor; }
+
+        .root-select {
+            font-family: inherit; font-size: 12px; font-weight: 500;
+            padding: 5px 10px; color: var(--text);
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); outline: none; cursor: pointer;
+        }
+
+        .hint {
+            font-size: 11px; color: var(--subtle);
+            display: flex; align-items: center; gap: 5px;
+        }
+        .hint svg { width: 12px; height: 12px; fill: currentColor; }
+
+        /* ── Canvas viewport ──────────────────────────────────── */
+        .viewport {
+            flex: 1; position: relative;
+            cursor: grab; overflow: hidden;
+        }
+        .viewport:active { cursor: grabbing; }
+        .canvas {
+            position: absolute;
+            transform-origin: 0 0;
+            padding: 80px 120px 120px;
+            display: inline-block;
+            will-change: transform;
+            /* Force GPU compositing so text re-renders at device resolution on zoom */
+            transform-style: preserve-3d;
+            backface-visibility: hidden;
+        }
+
+        /* ── CSS Hierarchy Tree ───────────────────────────────── */
+        .tree { display: inline-block; }
+        .tree ul {
+            padding-top: 28px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        .tree li {
+            display: flex; flex-direction: column; align-items: center;
+            position: relative; padding: 28px 0 0 0; list-style: none;
+        }
+
+        /* Connectors */
+        .tree li::before, .tree li::after {
+            content: ''; position: absolute; top: 0; right: 50%;
+            border-top: 1px solid var(--line); width: 50%; height: 28px;
+        }
+        .tree li::after { right: auto; left: 50%; border-left: 1px solid var(--line); }
+        .tree li:only-child::after, .tree li:only-child::before { display: none; }
+        .tree li:only-child { padding-top: 0; }
+        .tree li:first-child::before, .tree li:last-child::after { border: 0 none; }
+        .tree li:last-child::before { border-right: 1px solid var(--line); border-radius: 0 6px 0 0; }
+        .tree li:first-child::after { border-radius: 6px 0 0 0; }
+        .tree ul::before {
+            content: ''; position: absolute; top: 0; left: 50%;
+            border-left: 1px solid var(--line); width: 0; height: 28px;
+        }
+
+        /* ── Node card ────────────────────────────────────────── */
+        .tree-node {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 8px 12px;
+            display: flex; flex-direction: column; gap: 0;
+            min-width: 130px; max-width: 200px;
+            position: relative; z-index: 2;
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(0,0,0,.06);
+            /* Subpixel text rendering for crisp text at all zoom levels */
+            -webkit-font-smoothing: subpixel-antialiased;
+            -moz-osx-font-smoothing: auto;
+            text-rendering: geometricPrecision;
+        }
+        .tree-node:hover { border-color: var(--accent); }
+        .tree-node.expanded { max-width: 280px; min-width: 240px; border-color: var(--accent); }
+        .tree-node.highlighted { box-shadow: 0 0 0 2px var(--accent); }
+
+        .tree-node.m { background: var(--m-node); border-color: var(--m-border); }
+        .tree-node.f { background: var(--f-node); border-color: var(--f-border); }
+        .tree-node.m:hover, .tree-node.m.expanded, .tree-node.m.highlighted { border-color: var(--m-dot); }
+        .tree-node.f:hover, .tree-node.f.expanded, .tree-node.f.highlighted { border-color: var(--f-dot); }
+
+        .node-header { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+        .node-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+        .node-label { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Collapse toggle */
+        .toggle-btn {
+            position: absolute; bottom: -10px; left: 50%;
+            transform: translateX(-50%);
+            width: 18px; height: 18px; border-radius: 50%;
+            background: var(--surface); border: 1px solid var(--border);
+            font-size: 10px; font-weight: 700; color: var(--subtle);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 5; line-height: 1; font-family: inherit;
+        }
+        .toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* In-place detail panel */
+        .node-detail {
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+            font-size: 11.5px;
+        }
+        .nd-row { display: flex; gap: 6px; line-height: 1.4; }
+        .nd-key { color: var(--subtle); font-weight: 600; min-width: 60px; flex-shrink: 0; }
+        .nd-val { color: var(--muted); flex: 1; }
+        .nd-meaning { font-style: italic; color: var(--muted); border-left: 2px solid var(--accent); padding-left: 6px; line-height: 1.5; }
+        .nd-notes { color: var(--muted); line-height: 1.5; max-height: 80px; overflow-y: auto; }
+
+        .nd-refs { display: flex; flex-wrap: wrap; gap: 4px; }
+        .nd-ref-chip {
+            display: inline-flex; align-items: center; gap: 3px;
+            padding: 3px 8px; font-size: 10.5px; font-weight: 500;
+            border: 1px solid var(--border); border-radius: 20px;
+            color: var(--muted); text-decoration: none; background: var(--bg);
+        }
+        .nd-ref-chip.link { cursor: pointer; }
+        .nd-ref-chip.link:hover { border-color: var(--accent); color: var(--accent); }
+        .nd-ref-chip svg { width: 9px; height: 9px; fill: currentColor; }
+
+        .nd-open-btn {
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+            padding: 5px 10px; font-size: 11px; font-weight: 600;
+            background: var(--accent-bg); color: var(--accent);
+            border: 1px solid var(--accent); border-radius: var(--radius-sm);
+            text-decoration: none; cursor: pointer;
+        }
+        .nd-open-btn svg { width: 11px; height: 11px; fill: currentColor; }
+    </style>
+</head>
+<body>
+
+    <!-- Top bar -->
+    <header class="topbar">
+        <div class="topbar-brand">
+            <div class="topbar-brand-dot"></div>
+            Genealogía Bíblica
+        </div>
+        <span style="font-size:11px;color:var(--subtle)">Árbol interactivo</span>
+        <span style="font-size:11px;color:var(--subtle);margin-left:4px;">·</span>
+        <label style="font-size:12px;color:var(--muted);font-weight:500;">Linaje raíz</label>
+        <select class="root-select" id="rootSelect">
+            <option value="Adam">Adán — Patriarcas</option>
+            <option value="Noé">Noé — Diluvio y Naciones</option>
+            <option value="Abraham">Abraham — Linaje de la fe</option>
+            <option value="Israel">Israel — Las 12 Tribus</option>
+            <option value="David">David — Línea de Judá</option>
+            <option value="Saúl">Saúl — Línea de Benjamín</option>
+        </select>
+        <div class="topbar-sep"></div>
+        <span class="hint">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.75z"/></svg>
+            Arrastra · Rueda = zoom · Clic = detalle
+        </span>
+        <a href="visor_genealogia.html" class="topbar-btn">
+            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+            Fichas
+        </a>
+        <button class="topbar-btn" id="themeToggle">
+            <svg id="sunIcon" style="display:none" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3zm0-11c-.55 0-1-.45-1-1V2c0-.55.45-1 1-1s1 .45 1 1v1c0 .55-.45 1-1 1zm0 16c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1s1-.45 1-1v-1c0-.55-.45-1-1-1zm8-8c0-.55-.45-1-1-1h-1c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zM6 12c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zm11.66-5.66l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zm-11.31 11.3l-.71.71c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0l.71-.71c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0zm11.31.01l-.71.71c-.39-.39-1.02-.39-1.41 0l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zM6.35 6.34l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41z"/></svg>
+            <svg id="moonIcon" viewBox="0 0 24 24"><path d="M12.3 22h-.1c-5.5 0-10-4.5-10-10 0-4.8 3.5-8.9 8.3-9.7.6-.1 1.1.4 1 1-.4 2.4.4 4.9 2.1 6.6 1.7 1.7 4.2 2.5 6.6 2.1.6-.1 1.1.4 1 1-.8 4.8-4.9 8.3-9.7 8.3z"/></svg>
+            Tema
+        </button>
+    </header>
+
+    <!-- Viewport -->
+    <div class="viewport" id="viewport">
+        <div class="canvas" id="canvas">
+            <div class="tree" id="treeRoot"></div>
+        </div>
+    </div>
+
+    <script src="genealogia_data.js"></script>
+    <script>
+        // ── Data ──────────────────────────────────────────────────
+        const people = {};
+        const localPatriarchDetails = {
+            "Adam": { lugar:"Jardín del Edén", significado:"Del hebreo «אָדָם» (adam), «hombre» o «tierra».", cruzada:"1 Crónicas 1 [Cruces: Adam: Génesis 1:26-27, 2:7, 5:1-5; Lucas 3:38; Romanos 5:12-21]", adicional:"Primer ser humano. Colocado en el Edén y expulsado tras desobedecer. Cabeza federal de la humanidad en contraste con Cristo." },
+            "Eva":  { lugar:"Jardín del Edén", significado:"Del hebreo «חַוָּה» (Chavah), «vida».", cruzada:"Génesis 2:21-25, 3:1-20; 2 Corintios 11:3", adicional:"Primera mujer, creada de Adán. Seducida por la serpiente." },
+            "Set":  { lugar:"Fuera del Edén", significado:"Del hebreo «שֵׁת» (Sheth), «sustituto» o «designado».", cruzada:"1 Crónicas 1 [Cruces: Set: Génesis 4:25-26, 5:3-8; Lucas 3:38]", adicional:"Tercer hijo de Adán y Eva. De su línea desciende Noé." },
+            "Noé":  { lugar:"Mesopotamia", significado:"Del hebreo «נֹחַ» (Noach), «descanso» o «consuelo».", cruzada:"1 Crónicas 1 [Cruces: Noé: Génesis 5:28-32, caps. 6-9; Hebreos 11:7; 2 Pedro 2:5]", adicional:"Construyó el arca y salvó a su familia del Diluvio." },
+            "Abraham": { lugar:"Ur de los Caldeos", significado:"Del hebreo «אַבְרָהָם» (Avraham), «padre de multitudes».", cruzada:"1 Crónicas 1 [Cruces: Abraham: Génesis 11:26-32, caps. 12-25; Romanos 4; Gálatas 3]", adicional:"Patriarca de la fe. Llamado a salir de Ur a Canaán." },
+            "Israel": { lugar:"Padan-aram", significado:"Del hebreo «יִשְׂרָאֵל» (Yisrael), «el que lucha con Dios».", cruzada:"1 Crónicas 2 [Cruces: Israel: Génesis 25-35, 46-50; Lucas 3:34; Romanos 9]", adicional:"Hijo de Isaac. Renombrado Israel tras luchar con un ángel. Padre de las 12 tribus." },
+            "David": { lugar:"Belén", significado:"Del hebreo «דָּוִד» (David), «amado».", cruzada:"1 Crónicas 3 [Cruces: David: 1 Samuel 16-31; 2 Samuel; Mateo 1; Lucas 3]", adicional:"Segundo rey de Israel. Recibió la promesa dinástica mesiánica." },
+            "Salomón": { lugar:"Jerusalén", significado:"Del hebreo «שְׁלֹמֹה» (Shlomoh), «pacífico».", cruzada:"1 Crónicas 3 [Cruces: Salomón: 1 Reyes 1-11; Mateo 1; 2 Crónicas 1-9]", adicional:"Hijo de David. Edificó el Primer Templo de Jerusalén." }
+        };
+
+        function buildRelationshipMap() {
+            if (typeof GENEALOGIA_DATA === 'undefined') return;
+            function getOrCreate(name) {
+                if (!name) return null;
+                const n = name.trim(); if (!n) return null;
+                if (!people[n]) people[n] = { name:n, gender:"M", father:"", mother:"", birthPlace:"", spouses:new Set(), children:[], notes:"", reference:"", meaning:"" };
+                return people[n];
+            }
+            GENEALOGIA_DATA.forEach(row => {
+                const cn = row["Hijos"], fn = row["Padre"], mn = row["Madre"];
+                const child = getOrCreate(cn), father = getOrCreate(fn), mother = getOrCreate(mn);
+                if (child) { if (fn) child.father = fn; if (mn) child.mother = mn; child.gender = row["Género Hijos"]||"M"; child.birthPlace = row["Lugar de nacimiento"]||""; child.notes = row["Información Adicional"]||row["Notas"]||""; child.reference = row["Referencia"]||""; }
+                if (father && cn) { father.children.push({name:cn,gender:row["Género Hijos"]||"M",birthPlace:row["Lugar de nacimiento"]||""}); if (mn){father.spouses.add(mn);mother.spouses.add(fn);} }
+                if (mother && cn) mother.children.push({name:cn,gender:row["Género Hijos"]||"M",birthPlace:row["Lugar de nacimiento"]||""});
+                if (fn && row["Significado del Nombre (Padre)"]) father.meaning = row["Significado del Nombre (Padre)"];
+            });
+            Object.keys(localPatriarchDetails).forEach(name => {
+                const loc = localPatriarchDetails[name], p = getOrCreate(name); if (!p) return;
+                if (loc.lugar) p.birthPlace = loc.lugar; if (loc.significado) p.meaning = loc.significado;
+                if (loc.adicional) p.notes = loc.adicional; if (loc.cruzada) p.reference = loc.cruzada;
+            });
+        }
+
+        function dotColor(gender) { return gender.toLowerCase() === "f" ? "var(--f-dot)" : "var(--m-dot)"; }
+
+        function getBibleUrl(ref) {
+            if (!ref) return null;
+            const m = ref.match(/([1-2]\s+)?([A-ZÁÉÍÓÚ][a-zñáéíóúü]+(?:\s+de\s+[a-zñáéíóúü]+)?)\s+(\d+)/i);
+            if (!m) return null;
+            const prefix = m[1] ? m[1].trim()+"-" : "";
+            const book = m[2].trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"-");
+            if (prefix+book === "mateo" && m[3] === "24") return "https://btx4-juan.sociedadbiblicaiberoamericana.net/24-segun-mateo/c/0/i/23237365/capitulo-24";
+            return null;
+        }
+
+        function buildRefsHtml(reference) {
+            if (!reference) return "";
+            const mainRef = reference.split("[")[0].trim();
+            const crucesMatch = reference.match(/\[Cruces:\s*(.*)\]/);
+            const chip = ref => {
+                const url = getBibleUrl(ref);
+                return url
+                    ? `<a href="${url}" class="nd-ref-chip link" target="_blank"><svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>${ref}</a>`
+                    : `<span class="nd-ref-chip">${ref}</span>`;
+            };
+            let html = chip(mainRef);
+            if (crucesMatch && crucesMatch[1]) {
+                crucesMatch[1].split(";").forEach(c => {
+                    const clean = c.replace(/^[A-ZÁÉÍÓÚ][a-zñáéíóúü]+:\s*/i,"").trim();
+                    if (clean) html += chip(clean);
+                });
+            }
+            return html;
+        }
+
+        // ── Tree rendering ─────────────────────────────────────────
+        function buildTreeData(nodeName, maxDepth=5, depth=0, visited=new Set()) {
+            if (visited.has(nodeName) || depth > maxDepth) return null;
+            visited.add(nodeName);
+            const p = people[nodeName];
+            if (!p) return { name:nodeName, gender:"M", children:[] };
+            let kids = p.children;
+            if (nodeName.toLowerCase()==="adam" && kids.length===0)
+                kids = [{name:"Caín",gender:"M"},{name:"Abel",gender:"M"},{name:"Set",gender:"M"}];
+            return { name:p.name, gender:p.gender, children: kids.map(c=>buildTreeData(c.name,maxDepth,depth+1,visited)).filter(Boolean) };
+        }
+
+        function renderNode(node) {
+            const li = document.createElement("li");
+            const nodeDiv = document.createElement("div");
+            const gClass = node.gender.toLowerCase() === "f" ? "f" : "m";
+            nodeDiv.className = `tree-node ${gClass}`;
+            nodeDiv.dataset.nodeName = node.name;
+
+            nodeDiv.innerHTML = `
+                <div class="node-header">
+                    <span class="node-dot" style="background:${dotColor(node.gender)}"></span>
+                    <span class="node-label">${node.name}</span>
+                </div>
+            `;
+
+            // Click → expand/collapse in-place
+            nodeDiv.onclick = e => {
+                const isOpen = nodeDiv.classList.contains("expanded");
+                // Collapse all others
+                document.querySelectorAll(".tree-node").forEach(n => {
+                    n.classList.remove("expanded","highlighted");
+                    const det = n.querySelector(".node-detail");
+                    if (det) det.style.display = "none";
+                });
+                if (!isOpen) {
+                    nodeDiv.classList.add("expanded","highlighted");
+                    let det = nodeDiv.querySelector(".node-detail");
+                    if (!det) {
+                        det = document.createElement("div");
+                        det.className = "node-detail";
+                        nodeDiv.appendChild(det);
+                    }
+                    const p = people[node.name] || { gender:node.gender, birthPlace:"", spouses:new Set(), notes:"", reference:"", meaning:"" };
+                    const spousesList = p.spouses ? Array.from(p.spouses).join(", ") : (node.name.toLowerCase()==="adam"?"Eva":"");
+                    const refsHtml = buildRefsHtml(p.reference);
+                    det.innerHTML = `
+                        <div class="nd-row"><span class="nd-key">Origen</span><span class="nd-val">${p.birthPlace||"No registrado"}</span></div>
+                        <div class="nd-row"><span class="nd-key">Cónyuge</span><span class="nd-val">${spousesList||"No registrado"}</span></div>
+                        ${p.meaning ? `<div class="nd-meaning">${p.meaning}</div>` : ""}
+                        ${p.notes ? `<div class="nd-notes">${p.notes}</div>` : ""}
+                        ${refsHtml ? `<div class="nd-refs">${refsHtml}</div>` : ""}
+                        <a href="visor_genealogia.html?name=${encodeURIComponent(node.name)}" class="nd-open-btn" target="_blank">
+                            <svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                            Ficha completa
+                        </a>
+                    `;
+                    det.style.display = "flex";
+                }
+                e.stopPropagation();
+            };
+
+            li.appendChild(nodeDiv);
+
+            if (node.children && node.children.length > 0) {
+                const toggle = document.createElement("button");
+                toggle.className = "toggle-btn"; toggle.textContent = "−";
+                toggle.onclick = e => {
+                    const ul = li.querySelector("ul");
+                    const collapsed = ul.style.display === "none";
+                    ul.style.display = collapsed ? "flex" : "none";
+                    toggle.textContent = collapsed ? "−" : "+";
+                    e.stopPropagation();
+                };
+                nodeDiv.appendChild(toggle);
+
+                const ul = document.createElement("ul");
+                node.children.forEach(c => ul.appendChild(renderNode(c)));
+                li.appendChild(ul);
+            }
+            return li;
+        }
+
+        function loadTree(rootName) {
+            const rootEl = document.getElementById("treeRoot");
+            rootEl.innerHTML = "";
+            const data = buildTreeData(rootName, 5);
+            if (data) rootEl.appendChild(renderNode(data));
+            resetView();
+        }
+
+        // ── Pan & zoom ─────────────────────────────────────────────
+        let scale = 0.82, tx = 0, ty = 0, dragging = false, sx = 0, sy = 0;
+
+        function applyTransform() {
+            /* translate3d triggers GPU compositing layer — text re-rasterizes at device pixel ratio */
+            document.getElementById("canvas").style.transform = `translate3d(${tx}px,${ty}px,0) scale(${scale})`;
+        }
+
+        function resetView() {
+            const vp = document.getElementById("viewport");
+            const cv = document.getElementById("canvas");
+            scale = 0.82;
+            tx = (vp.clientWidth / 2) - (cv.scrollWidth * scale / 2) + 160;
+            ty = 60;
+            applyTransform();
+        }
+
+        function setupPanZoom() {
+            const vp = document.getElementById("viewport");
+            vp.addEventListener("mousedown", e => {
+                if (e.target.closest(".tree-node") || e.target.closest(".toggle-btn")) return;
+                dragging = true; sx = e.clientX - tx; sy = e.clientY - ty;
+            });
+            window.addEventListener("mousemove", e => { if (!dragging) return; tx = e.clientX - sx; ty = e.clientY - sy; applyTransform(); });
+            window.addEventListener("mouseup", () => dragging = false);
+            vp.addEventListener("wheel", e => {
+                e.preventDefault();
+                const f = 0.06, old = scale;
+                scale = e.deltaY < 0 ? Math.min(3, scale+f) : Math.max(0.12, scale-f);
+                const r = vp.getBoundingClientRect();
+                const mx = e.clientX - r.left, my = e.clientY - r.top;
+                tx = mx - (mx - tx) * (scale / old);
+                ty = my - (my - ty) * (scale / old);
+                applyTransform();
+            }, { passive: false });
+        }
+
+        // ── selectNodeInTree ───────────────────────────────────────
+        function selectNodeInTree(name) {
+            const nd = document.querySelector(`.tree-node[data-node-name="${name}"]`);
+            if (!nd) return false;
+            if (!nd.classList.contains("expanded")) nd.click();
+            const r = nd.getBoundingClientRect();
+            const vr = document.getElementById("viewport").getBoundingClientRect();
+            tx = (vr.width/2) - (r.width/2) - (nd.offsetLeft * scale);
+            ty = (vr.height/2) - (r.height/2) - (nd.offsetTop * scale);
+            applyTransform(); return true;
+        }
+
+        // ── Theme ──────────────────────────────────────────────────
+        function setupTheme() {
+            const toggle = document.getElementById("themeToggle");
+            const sun = document.getElementById("sunIcon"), moon = document.getElementById("moonIcon");
+            const apply = theme => {
+                document.documentElement.setAttribute("data-theme", theme);
+                sun.style.display = theme === "dark" ? "block" : "none";
+                moon.style.display = theme === "dark" ? "none" : "block";
+            };
+            apply(localStorage.getItem("theme") || "light");
+            toggle.addEventListener("click", () => {
+                const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+                localStorage.setItem("theme", next); apply(next);
+            });
+        }
+
+        // ── Controls ───────────────────────────────────────────────
+        function setupControls() {
+            document.getElementById("rootSelect").addEventListener("change", e => loadTree(e.target.value));
+        }
+
+        // ── Init ───────────────────────────────────────────────────
+        window.addEventListener("DOMContentLoaded", () => {
+            buildRelationshipMap();
+            setupPanZoom();
+            setupControls();
+            setupTheme();
+            loadTree("Adam");
+
+            const params = new URLSearchParams(window.location.search);
+            const initRoot = params.get("root"), highlight = params.get("highlight");
+            if (initRoot && people[initRoot]) {
+                document.getElementById("rootSelect").value = initRoot;
+                loadTree(initRoot);
+            }
+            if (highlight) setTimeout(() => selectNodeInTree(highlight), 350);
+        });
+    </script>
+</body>
+</html>
