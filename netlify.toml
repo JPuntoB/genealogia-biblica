@@ -1,5 +1,5 @@
 [build]
-  command   = "python organizar_genealogia.py"
+  command   = "python excel_to_js.py"
   publish   = "."
 
 [build.environment]

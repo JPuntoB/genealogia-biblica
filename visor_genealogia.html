@@ -521,6 +521,14 @@
                         <div class="section-label">Referencias bíblicas</div>
                         <div class="refs-wrap" id="refsContainer"></div>
                     </div>
+
+                    <!-- External link (Enlace_Externo column) -->
+                    <div id="extLinkRow" style="display:none; margin-top:12px;">
+                        <a id="extLinkBtn" href="#" target="_blank" rel="noopener noreferrer" class="topbar-btn" style="font-size:12px; gap:6px;">
+                            <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                            Más información
+                        </a>
+                    </div>
                 </div>
             </div>
         </main>
@@ -587,7 +595,7 @@
                 if (!name) return null;
                 const n = name.trim();
                 if (!n) return null;
-                if (!people[n]) people[n] = { name:n, gender:"M", father:"", mother:"", birthPlace:"", spouses:new Set(), children:[], notes:"", reference:"", meaning:"" };
+                if (!people[n]) people[n] = { name:n, gender:"M", father:"", mother:"", birthPlace:"", spouses:new Set(), children:[], notes:"", reference:"", meaning:"", imageUrl:"", refsUrls:"", externalLink:"" };
                 return people[n];
             }
             GENEALOGIA_DATA.forEach(row => {
@@ -600,6 +608,9 @@
                     child.birthPlace = row["Lugar de nacimiento"] || "";
                     child.notes = row["Información Adicional"] || row["Notas"] || "";
                     child.reference = row["Referencia"] || "";
+                    if (row["Imagen_URL"])      child.imageUrl      = row["Imagen_URL"].trim();
+                    if (row["Referencias_URLs"]) child.refsUrls      = row["Referencias_URLs"].trim();
+                    if (row["Enlace_Externo"])  child.externalLink  = row["Enlace_Externo"].trim();
                 }
                 if (father && childName) {
                     father.children.push({ name:childName, gender:row["Género Hijos"]||"M", birthPlace:row["Lugar de nacimiento"]||"" });
@@ -672,10 +683,13 @@
             document.getElementById("valName").textContent = p.name;
             document.getElementById("valMeaning").textContent = p.meaning || "Significado del nombre no registrado.";
 
-            // Avatar
+            // Avatar — uses imageUrl if available, then adam_portrait.png for Adam, else gradient
             const img = document.getElementById("portraitImg"), ph = document.getElementById("portraitPlaceholder");
-            if (p.name.toLowerCase() === "adam") {
-                img.src = "adam_portrait.png"; img.style.display = "block"; ph.style.display = "none";
+            const portraitSrc = p.imageUrl || (p.name.toLowerCase() === "adam" ? "adam_portrait.png" : "");
+            if (portraitSrc) {
+                img.src = portraitSrc;
+                img.onerror = () => { img.style.display="none"; ph.style.display="flex"; ph.textContent=p.name.charAt(0); ph.style.background=avatarGradient(p.name); };
+                img.style.display = "block"; ph.style.display = "none";
             } else {
                 img.style.display = "none"; ph.style.display = "flex";
                 ph.textContent = p.name.charAt(0); ph.style.background = avatarGradient(p.name);
@@ -717,29 +731,42 @@
             // Notes
             document.getElementById("valNotes").textContent = p.notes || "Sin información biográfica registrada.";
 
-            // References
+            // References — uses Referencias_URLs (pipe-separated) to make chips clickable
             const refsEl = document.getElementById("refsContainer");
             refsEl.innerHTML = "";
+            const urlList = (p.refsUrls || "").split("|").map(u => u.trim()).filter(Boolean);
             if (p.reference) {
                 const mainRef = p.reference.split("[")[0].trim();
                 const crucesMatch = p.reference.match(/\[Cruces:\s*(.*)\]/);
-                const makeChip = ref => {
-                    const url = getBibleUrl(ref);
-                    const el = document.createElement(url ? "a" : "span");
-                    el.className = "ref-chip" + (url ? " link" : "");
-                    if (url) { el.href = url; el.target = "_blank"; }
-                    el.innerHTML = url ? `<svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>${ref}` : ref;
-                    refsEl.appendChild(el);
-                };
-                makeChip(mainRef);
+                const allTexts = [mainRef];
                 if (crucesMatch && crucesMatch[1]) {
                     crucesMatch[1].split(";").forEach(c => {
                         const clean = c.replace(/^[A-ZÁÉÍÓÚ][a-zñáéíóúü]+:\s*/i, "").trim();
-                        if (clean) makeChip(clean);
+                        if (clean) allTexts.push(clean);
                     });
                 }
+                allTexts.forEach((ref, idx) => {
+                    const explicitUrl = urlList[idx] || null;
+                    const autoUrl = getBibleUrl(ref);
+                    const url = explicitUrl || autoUrl;
+                    const el = document.createElement(url ? "a" : "span");
+                    el.className = "ref-chip" + (url ? " link" : "");
+                    if (url) { el.href = url; el.target = "_blank"; el.rel = "noopener noreferrer"; }
+                    el.innerHTML = url
+                        ? `<svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>${ref}`
+                        : ref;
+                    refsEl.appendChild(el);
+                });
             } else {
                 refsEl.innerHTML = `<span class="no-data">Sin referencias registradas</span>`;
+            }
+
+            // External link (Enlace_Externo column)
+            const extLinkRow = document.getElementById("extLinkRow");
+            const extLinkEl  = document.getElementById("extLinkBtn");
+            if (extLinkRow && extLinkEl) {
+                if (p.externalLink) { extLinkEl.href = p.externalLink; extLinkRow.style.display = "flex"; }
+                else extLinkRow.style.display = "none";
             }
 
             // Breadcrumb

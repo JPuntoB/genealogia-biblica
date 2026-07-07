@@ -1,9 +1,11 @@
-# Archivos generados automáticamente por organizar_genealogia.py
+# Archivos generados automáticamente por excel_to_js.py
 # Netlify los regenera en cada deploy — no hace falta subirlos
 genealogia_data.js
 genealogia_organizada.csv
 genealogia_organizada.tsv
-genealogia_organizada.xlsx
+
+# El Excel SÍ se sube — es la fuente de datos que el usuario edita
+# genealogia_organizada.xlsx  ← NO ignorar
 
 # Python
 __pycache__/
