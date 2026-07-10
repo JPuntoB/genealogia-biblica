@@ -787,73 +787,316 @@ def build_manual_records(fieldnames):
     return manual
 
 
-def main():
+# ── Mejoras: Detección de ciclos, estadísticas, JSON export, watch mode ──────
+
+def detect_cycles(records):
+    """
+    Detecta ciclos en el grafo padre→hijo usando DFS.
+    Retorna lista de ciclos encontrados (cada uno como lista de nombres).
+    """
+    # Construir grafo de adyacencia
+    children_map = {}  # padre -> [hijos]
+    for rec in records:
+        padre = rec.get("Padre", "").strip()
+        hijo  = rec.get("Hijos",  "").strip()
+        if padre and hijo:
+            children_map.setdefault(padre, []).append(hijo)
+
+    cycles = []
+    visited = set()
+    rec_stack = set()
+    path = []
+
+    def dfs(node):
+        visited.add(node)
+        rec_stack.add(node)
+        path.append(node)
+        for child in children_map.get(node, []):
+            if child not in visited:
+                if dfs(child):
+                    return True
+            elif child in rec_stack:
+                # Encontramos un ciclo
+                cycle_start = path.index(child)
+                cycles.append(list(path[cycle_start:]) + [child])
+        path.pop()
+        rec_stack.discard(node)
+        return False
+
+    for node in list(children_map.keys()):
+        if node not in visited:
+            dfs(node)
+
+    return cycles
+
+
+def print_statistics(records):
+    """
+    Imprime un reporte de estadísticas de los datos genealógicos.
+    """
+    print("\n" + "=" * 60)
+    print("  ESTADISTICAS DE LA GENEALOGIA BIBLICA")
+    print("=" * 60)
+
+    # Recopilar personas únicas
+    people = {}
+    for rec in records:
+        for role, col in [("padre", "Padre"), ("madre", "Madre"), ("hijo", "Hijos")]:
+            name = rec.get(col, "").strip()
+            if name:
+                if name not in people:
+                    people[name] = {
+                        "hijos": set(), "tiene_imagen": False,
+                        "tiene_ref": False, "tiene_notas": False,
+                        "genero": "M"
+                    }
+                if role == "hijo":
+                    people[name]["genero"] = rec.get("Género Hijos", "M")
+                    if rec.get("Referencia", "").strip():
+                        people[name]["tiene_ref"] = True
+                    if rec.get("Información Adicional", "").strip() or rec.get("Notas", "").strip():
+                        people[name]["tiene_notas"] = True
+                    if rec.get("Imagen_URL", "").strip():
+                        people[name]["tiene_imagen"] = True
+        padre = rec.get("Padre", "").strip()
+        hijo  = rec.get("Hijos",  "").strip()
+        if padre and hijo:
+            people.setdefault(padre, {"hijos": set(), "tiene_imagen": False, "tiene_ref": False, "tiene_notas": False, "genero": "M"})
+            people[padre]["hijos"].add(hijo)
+
+    total = len(people)
+    masculinos  = sum(1 for p in people.values() if p["genero"] != "F")
+    femeninos   = total - masculinos
+    con_imagen  = sum(1 for p in people.values() if p["tiene_imagen"])
+    con_ref     = sum(1 for p in people.values() if p["tiene_ref"])
+    con_notas   = sum(1 for p in people.values() if p["tiene_notas"])
+    con_hijos   = sum(1 for p in people.values() if len(p["hijos"]) > 0)
+
+    print(f"  Total de personas unicas : {total:>6}")
+    print(f"  Masculinos               : {masculinos:>6}  ({masculinos/total*100:.1f}%)")
+    print(f"  Femeninos                : {femeninos:>6}  ({femeninos/total*100:.1f}%)")
+    print(f"  Con imagen asignada      : {con_imagen:>6}  ({con_imagen/total*100:.1f}%)")
+    print(f"  Con referencia biblica   : {con_ref:>6}  ({con_ref/total*100:.1f}%)")
+    print(f"  Con notas biograficas    : {con_notas:>6}  ({con_notas/total*100:.1f}%)")
+    print(f"  Con descendientes reg.   : {con_hijos:>6}  ({con_hijos/total*100:.1f}%)")
+    print(f"  Total relaciones padre-h : {len(records):>6}")
+
+    # Top 10 con más hijos
+    top10 = sorted(people.items(), key=lambda x: len(x[1]["hijos"]), reverse=True)[:10]
+    print("\n  Top 10 personajes con mas hijos registrados:")
+    for i, (name, data) in enumerate(top10, 1):
+        bar = "#" * min(len(data["hijos"]), 30)
+        print(f"   {i:>2}. {name:<30} {len(data['hijos']):>3} hijos  {bar}")
+
+    # Detección de ciclos
+    print("\n  Verificando ciclos en el grafo genealogico...")
+    cycles = detect_cycles(records)
+    if cycles:
+        print(f"  [ALERTA] Se encontraron {len(cycles)} ciclo(s):")
+        for cyc in cycles:
+            print(f"     {' -> '.join(cyc)}")
+    else:
+        print("  OK: Sin ciclos detectados - el grafo es aciclico.")
+
+    print("=" * 60 + "\n")
+
+
+def validate_urls(records):
+    """
+    Verifica que las URLs en la columna 'Referencias_URLs' respondan HTTP 200.
+    Requiere urllib (stdlib).
+    """
+    from urllib.request import urlopen, Request
+    from urllib.error import URLError, HTTPError
+
+    url_set = set()
+    for rec in records:
+        for u in rec.get("Referencias_URLs", "").split("|"):
+            u = u.strip()
+            if u and u.startswith("http"):
+                url_set.add(u)
+
+    if not url_set:
+        print("No se encontraron URLs para validar.")
+        return
+
+    print(f"Validando {len(url_set)} URLs únicas...")
+    ok = bad = 0
+    for url in sorted(url_set):
+        try:
+            req = Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            code = urlopen(req, timeout=8).getcode()
+            if code == 200:
+                print(f"  ✅ {url}")
+                ok += 1
+            else:
+                print(f"  ⚠️  HTTP {code}  {url}")
+                bad += 1
+        except (HTTPError, URLError, Exception) as e:
+            print(f"  ❌ ERROR: {url}  ({e})")
+            bad += 1
+    print(f"\nResultado: {ok} OK, {bad} con error.")
+
+
+def run_pipeline(show_stats=False, validate=False):
+    """Ejecuta el pipeline completo y retorna los registros procesados."""
+    import json
+
     print("Iniciando procesamiento mejorado de Ase.txt...")
     sentences = preprocess_text(input_file)
     print(f"Preprocesado completo: {len(sentences)} sentencias lógicas identificadas.")
-    
+
     records = parse_genealogy(sentences)
     print(f"Se extrajeron {len(records)} registros genealógicos (sin filtrar).")
 
-    # ── Post-processing: clean up parser errors ─────────────────────────────
-    # 1. Remove known-bad rows (artefacts)
+    # 1. Eliminar artefactos
     before = len(records)
     records = [r for r in records if not is_bad_record(r)]
     print(f"Eliminados {before - len(records)} registros con nombres incorrectos (artefactos del parser).")
 
-    # 2. Remove exact duplicates
+    # 2. Eliminar duplicados
     before = len(records)
     records = deduplicate(records)
     print(f"Eliminados {before - len(records)} registros duplicados.")
 
-    # 3. Disambiguate the two Cainán figures
+    # 3. Resolver ambigüedad de Cainán
     records = fix_cainan_ambiguity(records)
-    print("Ambigüedad de Cainán (antediluviano vs. post-diluviano) resuelta.")
-    
-    # Define columns order
+    print("Ambigüedad de Cainán resuelta.")
+
+    # Orden de columnas
     fieldnames = [
         "Padre", "Madre", "Hijos", "Orden de Nacimiento", "Género Hijos",
-        "Lugar de nacimiento", "Significado del Nombre (Padre)", 
-        "Referencia", "Información Adicional", "Notas"
+        "Lugar de nacimiento", "Significado del Nombre (Padre)",
+        "Referencia", "Información Adicional", "Notas",
+        "Imagen_URL", "Referencias_URLs", "Enlace_Externo"
     ]
 
-    # 4. Add manually-curated rows
+    # 4. Añadir registros manuales
     manual_records = build_manual_records(fieldnames)
     records.extend(manual_records)
-    print(f"Añadidos {len(manual_records)} registros manuales (hijos de Ismael, hijos de Cetura, Amalec).")
-
+    print(f"Añadidos {len(manual_records)} registros manuales.")
     print(f"Total final: {len(records)} registros genealógicos.")
-    
-    # Write CSV
+
+    # Estadísticas opcionales
+    if show_stats:
+        print_statistics(records)
+
+    # Validación de URLs opcional
+    if validate:
+        validate_urls(records)
+
+    # ── Escribir salidas ──────────────────────────────────────────────────────
+
+    # CSV
     with open(csv_output, "w", encoding="utf-8-sig", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=",")
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore", delimiter=",")
         writer.writeheader()
         writer.writerows(records)
-    print(f"Archivo CSV guardado en: {csv_output}")
-    
-    # Write TSV
+    print(f"CSV guardado: {csv_output}")
+
+    # TSV
     with open(tsv_output, "w", encoding="utf-8-sig", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter="\t")
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore", delimiter="\t")
         writer.writeheader()
         writer.writerows(records)
-    print(f"Archivo TSV guardado en: {tsv_output}")
-    
-    # Write Excel (.xlsx) if pandas is available
+    print(f"TSV guardado: {tsv_output}")
+
+    # Excel
     try:
         import pandas as pd
         df = pd.DataFrame(records)
-        df = df[fieldnames]  # Ensure column order
+        for col in fieldnames:
+            if col not in df.columns:
+                df[col] = ""
+        df = df[fieldnames]
         df.to_excel(xlsx_output, index=False)
-        print(f"Archivo Excel guardado en: {xlsx_output}")
+        print(f"Excel guardado: {xlsx_output}")
     except ImportError:
-        print("Pandas no instalado — omitiendo .xlsx.")
+        print("pandas no instalado — omitiendo .xlsx.")
 
-    # Write JS data file
-    import json
-    js_output = "genealogia_data.js"
-    with open(js_output, "w", encoding="utf-8") as f:
-        f.write(f"const GENEALOGIA_DATA = {json.dumps(records, ensure_ascii=False)};\n")
-    print(f"Archivo JS de datos guardado en: {js_output}")
+    # JS
+    js_output_path = "genealogia_data.js"
+    with open(js_output_path, "w", encoding="utf-8") as f:
+        f.write("// genealogia_data.js — generado automáticamente por organizar_genealogia.py\n")
+        f.write("// NO editar este archivo directamente; editar genealogia_organizada.xlsx\n")
+        f.write(f"const GENEALOGIA_DATA = {json.dumps(records, ensure_ascii=False, indent=2)};\n")
+    print(f"JS guardado: {js_output_path}")
+
+    # JSON
+    json_output_path = "genealogia_data.json"
+    with open(json_output_path, "w", encoding="utf-8") as f:
+        json.dump(records, f, ensure_ascii=False, indent=2)
+    print(f"JSON guardado: {json_output_path}")
+
+    print("\nSUCCESS: Pipeline completado correctamente.")
+    return records
+
+
+def watch_mode(show_stats=False):
+    """
+    Modo watch: re-ejecuta el pipeline cuando Ase.txt cambia.
+    Usa polling simple (no requiere watchdog).
+    """
+    import time
+    import os
+
+    print(f"Modo watch activo - monitoreando '{input_file}' (Ctrl+C para salir)")
+    last_mtime = None
+
+    while True:
+        try:
+            mtime = os.path.getmtime(input_file)
+        except FileNotFoundError:
+            print(f"⚠️  Archivo '{input_file}' no encontrado. Esperando...")
+            time.sleep(3)
+            continue
+
+        if last_mtime is None or mtime != last_mtime:
+            if last_mtime is not None:
+                print(f"\n🔄 Cambio detectado en '{input_file}' — re-ejecutando pipeline...")
+            last_mtime = mtime
+            try:
+                run_pipeline(show_stats=show_stats)
+            except Exception as e:
+                print(f"❌ Error durante el pipeline: {e}")
+
+        time.sleep(2)
+
+
+def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Procesa Ase.txt y genera los archivos de datos genealógicos bíblicos.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""Ejemplos:
+  python organizar_genealogia.py                  # Procesamiento estándar
+  python organizar_genealogia.py --stats          # Con estadísticas detalladas
+  python organizar_genealogia.py --watch          # Modo vigilancia (re-ejecuta al cambiar)
+  python organizar_genealogia.py --watch --stats  # Watch + estadísticas
+  python organizar_genealogia.py --validate-urls  # Valida URLs del dataset
+"""
+    )
+    parser.add_argument(
+        "--stats", action="store_true",
+        help="Mostrar estadísticas detalladas y detección de ciclos."
+    )
+    parser.add_argument(
+        "--watch", action="store_true",
+        help="Modo vigilancia: re-ejecutar automáticamente cuando cambie Ase.txt."
+    )
+    parser.add_argument(
+        "--validate-urls", action="store_true", dest="validate_urls",
+        help="Verificar que todas las URLs del dataset respondan HTTP 200."
+    )
+
+    args = parser.parse_args()
+
+    if args.watch:
+        watch_mode(show_stats=args.stats)
+    else:
+        run_pipeline(show_stats=args.stats, validate=args.validate_urls)
+
 
 if __name__ == "__main__":
     main()

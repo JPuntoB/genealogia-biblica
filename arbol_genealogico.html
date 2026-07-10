@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         /* ── Design tokens ────────────────────────────────────── */
         :root {
@@ -59,18 +60,41 @@
             overflow: hidden;
         }
 
+        /* ── Spinner overlay ──────────────────────────────────── */
+        #loadingOverlay {
+            position: fixed; inset: 0; z-index: 9999;
+            background: rgba(0,0,0,0.38);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 14px;
+            backdrop-filter: blur(3px);
+            transition: opacity 0.3s;
+        }
+        #loadingOverlay.hidden { opacity: 0; pointer-events: none; }
+        .spinner {
+            width: 44px; height: 44px;
+            border: 4px solid rgba(255,255,255,0.25);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner-text { color: #fff; font-size: 13px; font-weight: 500; letter-spacing: 0.02em; }
+
         /* ── Top bar ──────────────────────────────────────────── */
         .topbar {
             height: 52px;
             min-height: 52px;
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 0 20px;
+            gap: 10px;
+            padding: 0 16px;
             background: var(--surface);
             border-bottom: 1px solid var(--border);
             flex-shrink: 0;
             z-index: 50;
+            flex-wrap: wrap;
+            overflow: hidden;
         }
         .topbar-brand {
             font-size: 13px; font-weight: 600; color: var(--text);
@@ -80,18 +104,35 @@
         .topbar-sep { flex: 1; }
         .topbar-btn {
             display: flex; align-items: center; gap: 5px;
-            padding: 5px 11px; font-size: 12px; font-weight: 500;
+            padding: 5px 10px; font-size: 12px; font-weight: 500;
             color: var(--muted); background: transparent;
             border: 1px solid var(--border); border-radius: var(--radius-sm);
             cursor: pointer; text-decoration: none; font-family: inherit;
+            white-space: nowrap;
+            transition: border-color 0.15s, color 0.15s;
         }
-        .topbar-btn svg { width: 13px; height: 13px; fill: currentColor; }
+        .topbar-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .topbar-btn svg { width: 13px; height: 13px; fill: currentColor; flex-shrink: 0; }
+        .topbar-btn.active { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
 
         .root-select {
             font-family: inherit; font-size: 12px; font-weight: 500;
             padding: 5px 10px; color: var(--text);
             background: var(--bg); border: 1px solid var(--border);
             border-radius: var(--radius-sm); outline: none; cursor: pointer;
+        }
+
+        /* Depth slider */
+        .depth-control {
+            display: flex; align-items: center; gap: 6px;
+            font-size: 11px; color: var(--muted); white-space: nowrap;
+        }
+        .depth-control input[type="range"] {
+            width: 70px; accent-color: var(--accent); cursor: pointer;
+        }
+        .depth-val {
+            min-width: 14px; text-align: center; font-weight: 600;
+            color: var(--accent);
         }
 
         .hint {
@@ -112,9 +153,12 @@
             padding: 80px 120px 120px;
             display: inline-block;
             will-change: transform;
-            /* Force GPU compositing so text re-renders at device resolution on zoom */
             transform-style: preserve-3d;
             backface-visibility: hidden;
+        }
+        /* Smooth centering animation */
+        .canvas.animating {
+            transition: transform 0.4s cubic-bezier(.4,0,.2,1);
         }
 
         /* ── CSS Hierarchy Tree ───────────────────────────────── */
@@ -147,6 +191,24 @@
             border-left: 1px solid var(--line); width: 0; height: 28px;
         }
 
+        /* ── Subtree collapse animation ─────────────────────────── */
+        .tree ul.collapsing {
+            overflow: hidden;
+            animation: collapseOut 0.28s ease forwards;
+        }
+        .tree ul.expanding {
+            overflow: hidden;
+            animation: expandIn 0.28s ease forwards;
+        }
+        @keyframes collapseOut {
+            from { max-height: 2000px; opacity: 1; }
+            to   { max-height: 0;     opacity: 0; }
+        }
+        @keyframes expandIn {
+            from { max-height: 0;     opacity: 0; }
+            to   { max-height: 2000px; opacity: 1; }
+        }
+
         /* ── Node card ────────────────────────────────────────── */
         .tree-node {
             background: var(--surface);
@@ -158,7 +220,6 @@
             position: relative; z-index: 2;
             cursor: pointer;
             box-shadow: 0 1px 4px rgba(0,0,0,.06);
-            /* Subpixel text rendering for crisp text at all zoom levels */
             -webkit-font-smoothing: subpixel-antialiased;
             -moz-osx-font-smoothing: auto;
             text-rendering: geometricPrecision;
@@ -223,9 +284,78 @@
             text-decoration: none; cursor: pointer;
         }
         .nd-open-btn svg { width: 11px; height: 11px; fill: currentColor; }
+
+        /* Center-node button inside detail */
+        .nd-center-btn {
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+            padding: 4px 9px; font-size: 11px; font-weight: 600;
+            background: transparent; color: var(--muted);
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+            cursor: pointer; font-family: inherit;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .nd-center-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .nd-center-btn svg { width: 11px; height: 11px; fill: currentColor; }
+
+        /* ── Tooltip ──────────────────────────────────────────── */
+        #nodeTooltip {
+            position: fixed; z-index: 8888;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 8px 12px;
+            font-size: 11.5px;
+            box-shadow: 0 4px 20px rgba(0,0,0,.15);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.18s;
+            max-width: 200px;
+            line-height: 1.5;
+        }
+        #nodeTooltip.visible { opacity: 1; }
+        .tt-name { font-weight: 700; font-size: 12px; margin-bottom: 3px; }
+        .tt-row { color: var(--muted); }
+        .tt-row span { color: var(--subtle); font-weight: 600; }
+
+        /* ── Minimap ──────────────────────────────────────────── */
+        #minimap {
+            position: fixed; bottom: 16px; right: 16px;
+            width: 160px; height: 100px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            box-shadow: 0 2px 12px rgba(0,0,0,.12);
+            overflow: hidden;
+            z-index: 100;
+            opacity: 0.88;
+        }
+        #minimapSvg { width: 100%; height: 100%; }
+        #minimapViewport {
+            fill: rgba(26,86,219,0.12);
+            stroke: var(--accent);
+            stroke-width: 1.5;
+            rx: 2;
+        }
     </style>
 </head>
 <body>
+
+    <!-- Loading overlay (spinner) -->
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="spinner-text">Cargando genealogía…</div>
+    </div>
+
+    <!-- Tooltip -->
+    <div id="nodeTooltip"></div>
+
+    <!-- Minimap -->
+    <div id="minimap">
+        <svg id="minimapSvg" viewBox="0 0 160 100" preserveAspectRatio="xMidYMid meet">
+            <g id="minimapNodes"></g>
+            <rect id="minimapViewport" x="0" y="0" width="160" height="100"/>
+        </svg>
+    </div>
 
     <!-- Top bar -->
     <header class="topbar">
@@ -234,7 +364,7 @@
             Genealogía Bíblica
         </div>
         <span style="font-size:11px;color:var(--subtle)">Árbol interactivo</span>
-        <span style="font-size:11px;color:var(--subtle);margin-left:4px;">·</span>
+        <span style="font-size:11px;color:var(--subtle);margin-left:2px;">·</span>
         <label style="font-size:12px;color:var(--muted);font-weight:500;">Linaje raíz</label>
         <select class="root-select" id="rootSelect">
             <option value="Adam">Adán — Patriarcas</option>
@@ -244,15 +374,48 @@
             <option value="David">David — Línea de Judá</option>
             <option value="Saúl">Saúl — Línea de Benjamín</option>
         </select>
+
+        <!-- Depth slider -->
+        <div class="depth-control">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h18v2H3zm2 4h14v2H5zm2 4h10v2H7zm2 4h6v2H9zm2 4h2v2h-2z"/></svg>
+            Profundidad
+            <input type="range" id="depthSlider" min="1" max="8" value="5">
+            <span class="depth-val" id="depthVal">5</span>
+        </div>
+
+        <!-- Ancestor mode toggle -->
+        <button class="topbar-btn" id="ancestorToggle" title="Modo antepasados: muestra ascendientes">
+            <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 1 0 0 10A5 5 0 0 0 12 2zm0 12c-5.33 0-8 2.67-8 4v2h16v-2c0-1.33-2.67-4-8-4z"/></svg>
+            Antepasados
+        </button>
+
         <div class="topbar-sep"></div>
+
         <span class="hint">
             <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.75z"/></svg>
             Arrastra · Rueda = zoom · Clic = detalle
         </span>
+
+        <!-- Nav links -->
         <a href="visor_genealogia.html" class="topbar-btn">
             <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
             Fichas
         </a>
+        <a href="grafo_relaciones.html" class="topbar-btn">
+            <svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+            Grafo
+        </a>
+        <a href="mapa_geografico.html" class="topbar-btn">
+            <svg viewBox="0 0 24 24"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
+            Mapa
+        </a>
+
+        <!-- Export PNG -->
+        <button class="topbar-btn" id="exportPng" title="Exportar vista como PNG">
+            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            Exportar PNG
+        </button>
+
         <button class="topbar-btn" id="themeToggle">
             <svg id="sunIcon" style="display:none" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3zm0-11c-.55 0-1-.45-1-1V2c0-.55.45-1 1-1s1 .45 1 1v1c0 .55-.45 1-1 1zm0 16c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1s1-.45 1-1v-1c0-.55-.45-1-1-1zm8-8c0-.55-.45-1-1-1h-1c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zM6 12c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zm11.66-5.66l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zm-11.31 11.3l-.71.71c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0l.71-.71c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0zm11.31.01l-.71.71c-.39-.39-1.02-.39-1.41 0l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zM6.35 6.34l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41z"/></svg>
             <svg id="moonIcon" viewBox="0 0 24 24"><path d="M12.3 22h-.1c-5.5 0-10-4.5-10-10 0-4.8 3.5-8.9 8.3-9.7.6-.1 1.1.4 1 1-.4 2.4.4 4.9 2.1 6.6 1.7 1.7 4.2 2.5 6.6 2.1.6-.1 1.1.4 1 1-.8 4.8-4.9 8.3-9.7 8.3z"/></svg>
@@ -293,9 +456,22 @@
             GENEALOGIA_DATA.forEach(row => {
                 const cn = row["Hijos"], fn = row["Padre"], mn = row["Madre"];
                 const child = getOrCreate(cn), father = getOrCreate(fn), mother = getOrCreate(mn);
-                if (child) { if (fn) child.father = fn; if (mn) child.mother = mn; child.gender = row["Género Hijos"]||"M"; child.birthPlace = row["Lugar de nacimiento"]||""; child.notes = row["Información Adicional"]||row["Notas"]||""; child.reference = row["Referencia"]||""; }
-                if (father && cn) { father.children.push({name:cn,gender:row["Género Hijos"]||"M",birthPlace:row["Lugar de nacimiento"]||""}); if (mn){father.spouses.add(mn);mother.spouses.add(fn);} }
-                if (mother && cn) mother.children.push({name:cn,gender:row["Género Hijos"]||"M",birthPlace:row["Lugar de nacimiento"]||""});
+                if (child) {
+                    if (fn) child.father = fn;
+                    if (mn) child.mother = mn;
+                    child.gender = row["Género Hijos"]||"M";
+                    child.birthPlace = (row["Lugar de nacimiento"]||"").replace(/\s*\(padre\)\s*/i,"").trim();
+                    const fi = row["Información Adicional"]||row["Notas"]||"";
+                    const cm = fi.match(/Sobre (?:el hijo|la hija) \([^)]+\):\s*(.+?)(?:\s*\|\s*Sobre (?:el padre|la madre)|$)/i);
+                    child.notes = cm ? cm[1].trim() : fi;
+                    child.reference = row["Referencia"]||"";
+                    if (row["Imagen_URL"])       child.imageUrl     = (row["Imagen_URL"]||"").trim();
+                    if (row["Referencias_URLs"]) child.refsUrls     = (row["Referencias_URLs"]||"").trim();
+                    if (row["Enlace_Externo"])   child.externalLink = (row["Enlace_Externo"]||"").trim();
+                }
+                const cleanBP = (row["Lugar de nacimiento"]||"").replace(/\s*\(padre\)\s*/i,"").trim();
+                if (father && cn) { father.children.push({name:cn,gender:row["Género Hijos"]||"M",birthPlace:cleanBP}); if (mn){father.spouses.add(mn);mother.spouses.add(fn);} }
+                if (mother && cn) mother.children.push({name:cn,gender:row["Género Hijos"]||"M",birthPlace:cleanBP});
                 if (fn && row["Significado del Nombre (Padre)"]) father.meaning = row["Significado del Nombre (Padre)"];
             });
             Object.keys(localPatriarchDetails).forEach(name => {
@@ -337,6 +513,28 @@
             return html;
         }
 
+        // ── State ─────────────────────────────────────────────────
+        let currentMaxDepth = 5;
+        let ancestorMode    = false;
+
+        // ── Ancestor tree builder ─────────────────────────────────
+        function buildAncestorData(nodeName, maxDepth=5, depth=0, visited=new Set()) {
+            if (visited.has(nodeName) || depth > maxDepth) return null;
+            visited.add(nodeName);
+            const p = people[nodeName];
+            if (!p) return { name:nodeName, gender:"M", children:[] };
+            const ancestors = [];
+            if (p.father && depth < maxDepth) {
+                const fa = buildAncestorData(p.father, maxDepth, depth+1, visited);
+                if (fa) ancestors.push(fa);
+            }
+            if (p.mother && depth < maxDepth) {
+                const mo = buildAncestorData(p.mother, maxDepth, depth+1, visited);
+                if (mo) ancestors.push(mo);
+            }
+            return { name: p.name, gender: p.gender, children: ancestors };
+        }
+
         // ── Tree rendering ─────────────────────────────────────────
         function buildTreeData(nodeName, maxDepth=5, depth=0, visited=new Set()) {
             if (visited.has(nodeName) || depth > maxDepth) return null;
@@ -347,6 +545,24 @@
             if (nodeName.toLowerCase()==="adam" && kids.length===0)
                 kids = [{name:"Caín",gender:"M"},{name:"Abel",gender:"M"},{name:"Set",gender:"M"}];
             return { name:p.name, gender:p.gender, children: kids.map(c=>buildTreeData(c.name,maxDepth,depth+1,visited)).filter(Boolean) };
+        }
+
+        function centerOnNode(nodeDiv) {
+            const vp   = document.getElementById("viewport");
+            const cv   = document.getElementById("canvas");
+            const rect = nodeDiv.getBoundingClientRect();
+            const vpR  = vp.getBoundingClientRect();
+
+            // Compute node center in canvas-local coords
+            const nodeCX = (rect.left - vpR.left - tx) / scale + (rect.width / scale) / 2;
+            const nodeCY = (rect.top  - vpR.top  - ty) / scale + (rect.height / scale) / 2;
+
+            tx = vpR.width  / 2 - nodeCX * scale;
+            ty = vpR.height / 2 - nodeCY * scale;
+
+            cv.classList.add("animating");
+            applyTransform();
+            setTimeout(() => cv.classList.remove("animating"), 450);
         }
 
         function renderNode(node) {
@@ -363,10 +579,33 @@
                 </div>
             `;
 
-            // Click → expand/collapse in-place
+            // ── Tooltip on hover (500ms debounce) ──────────────────
+            let tooltipTimer = null;
+            const tooltip = document.getElementById("nodeTooltip");
+            nodeDiv.addEventListener("mouseenter", e => {
+                tooltipTimer = setTimeout(() => {
+                    const p = people[node.name] || {};
+                    const childCount = p.children ? p.children.length : 0;
+                    tooltip.innerHTML = `
+                        <div class="tt-name">${node.name}</div>
+                        ${p.father ? `<div class="tt-row"><span>Padre:</span> ${p.father}</div>` : ""}
+                        <div class="tt-row"><span>Hijos:</span> ${childCount}</div>
+                    `;
+                    tooltip.classList.add("visible");
+                }, 500);
+            });
+            nodeDiv.addEventListener("mousemove", e => {
+                tooltip.style.left = (e.clientX + 14) + "px";
+                tooltip.style.top  = (e.clientY - 10) + "px";
+            });
+            nodeDiv.addEventListener("mouseleave", () => {
+                clearTimeout(tooltipTimer);
+                tooltip.classList.remove("visible");
+            });
+
+            // ── Click → expand/collapse in-place ──────────────────
             nodeDiv.onclick = e => {
                 const isOpen = nodeDiv.classList.contains("expanded");
-                // Collapse all others
                 document.querySelectorAll(".tree-node").forEach(n => {
                     n.classList.remove("expanded","highlighted");
                     const det = n.querySelector(".node-detail");
@@ -380,21 +619,62 @@
                         det.className = "node-detail";
                         nodeDiv.appendChild(det);
                     }
-                    const p = people[node.name] || { gender:node.gender, birthPlace:"", spouses:new Set(), notes:"", reference:"", meaning:"" };
+                    const p = people[node.name] || { gender:node.gender, birthPlace:"", father:"", mother:"", spouses:new Set(), children:[], notes:"", reference:"", meaning:"" };
                     const spousesList = p.spouses ? Array.from(p.spouses).join(", ") : (node.name.toLowerCase()==="adam"?"Eva":"");
-                    const refsHtml = buildRefsHtml(p.reference);
+                    const childCount  = p.children ? p.children.length : 0;
+
+                    const urlList = (p.refsUrls||"").split("|").map(u=>u.trim()).filter(Boolean);
+                    let refsHtml = "";
+                    if (p.reference) {
+                        const mainRef = p.reference.split("[")[0].trim();
+                        const crucesMatch = p.reference.match(/\[Cruces:\s*(.*)\]/);
+                        const allTexts = [mainRef];
+                        if (crucesMatch && crucesMatch[1]) {
+                            crucesMatch[1].split(";").forEach(c => {
+                                const cl = c.replace(/^[A-ZÁÉÍÓÚ][a-zñáéíóúü]+:\s*/i,"").trim();
+                                if (cl) allTexts.push(cl);
+                            });
+                        }
+                        refsHtml = allTexts.map((ref,i) => {
+                            const url = urlList[i] || getBibleUrl(ref);
+                            return url
+                                ? `<a href="${url}" class="nd-ref-chip link" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>${ref}</a>`
+                                : `<span class="nd-ref-chip">${ref}</span>`;
+                        }).join("");
+                    }
+
+                    const notesText = p.notes ||
+                        (p.father ? `Mencionado en las genealogías bíblicas como hijo de ${p.father}.` : "");
+
                     det.innerHTML = `
-                        <div class="nd-row"><span class="nd-key">Origen</span><span class="nd-val">${p.birthPlace||"No registrado"}</span></div>
-                        <div class="nd-row"><span class="nd-key">Cónyuge</span><span class="nd-val">${spousesList||"No registrado"}</span></div>
-                        ${p.meaning ? `<div class="nd-meaning">${p.meaning}</div>` : ""}
-                        ${p.notes ? `<div class="nd-notes">${p.notes}</div>` : ""}
-                        ${refsHtml ? `<div class="nd-refs">${refsHtml}</div>` : ""}
+                        ${p.birthPlace ? `<div class="nd-row"><span class="nd-key">Origen</span><span class="nd-val">${p.birthPlace}</span></div>` : ""}
+                        ${p.father    ? `<div class="nd-row"><span class="nd-key">Padre</span><span class="nd-val">${p.father}</span></div>` : ""}
+                        ${p.mother    ? `<div class="nd-row"><span class="nd-key">Madre</span><span class="nd-val">${p.mother}</span></div>` : ""}
+                        ${spousesList ? `<div class="nd-row"><span class="nd-key">Cónyuge</span><span class="nd-val">${spousesList}</span></div>` : ""}
+                        ${childCount  ? `<div class="nd-row"><span class="nd-key">Hijos</span><span class="nd-val">${childCount} registrado${childCount>1?"s":""}</span></div>` : ""}
+                        ${p.meaning   ? `<div class="nd-meaning">${p.meaning}</div>` : ""}
+                        ${notesText   ? `<div class="nd-notes">${notesText}</div>` : ""}
+                        ${refsHtml    ? `<div class="nd-refs">${refsHtml}</div>` : ""}
+                        ${p.externalLink ? `<a href="${p.externalLink}" class="nd-open-btn" target="_blank" rel="noopener noreferrer" style="margin-top:2px;"><svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>Más info</a>` : ""}
                         <a href="visor_genealogia.html?name=${encodeURIComponent(node.name)}" class="nd-open-btn" target="_blank">
                             <svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
                             Ficha completa
                         </a>
+                        <button class="nd-center-btn" id="centerBtn_${node.name.replace(/\s+/g,'_')}">
+                            <svg viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06z"/></svg>
+                            Centrar
+                        </button>
                     `;
                     det.style.display = "flex";
+
+                    // Wire up the center button
+                    const centerBtn = det.querySelector(`#centerBtn_${node.name.replace(/\s+/g,'_')}`);
+                    if (centerBtn) {
+                        centerBtn.addEventListener("click", ev => {
+                            ev.stopPropagation();
+                            centerOnNode(nodeDiv);
+                        });
+                    }
                 }
                 e.stopPropagation();
             };
@@ -406,9 +686,25 @@
                 toggle.className = "toggle-btn"; toggle.textContent = "−";
                 toggle.onclick = e => {
                     const ul = li.querySelector("ul");
-                    const collapsed = ul.style.display === "none";
-                    ul.style.display = collapsed ? "flex" : "none";
-                    toggle.textContent = collapsed ? "−" : "+";
+                    const isCollapsed = ul.style.display === "none";
+
+                    if (isCollapsed) {
+                        // Expand with animation
+                        ul.style.display = "flex";
+                        ul.classList.remove("collapsing");
+                        ul.classList.add("expanding");
+                        ul.addEventListener("animationend", () => ul.classList.remove("expanding"), { once: true });
+                        toggle.textContent = "−";
+                    } else {
+                        // Collapse with animation
+                        ul.classList.remove("expanding");
+                        ul.classList.add("collapsing");
+                        ul.addEventListener("animationend", () => {
+                            ul.classList.remove("collapsing");
+                            ul.style.display = "none";
+                        }, { once: true });
+                        toggle.textContent = "+";
+                    }
                     e.stopPropagation();
                 };
                 nodeDiv.appendChild(toggle);
@@ -420,20 +716,30 @@
             return li;
         }
 
-        function loadTree(rootName) {
+        function loadTree(rootName, maxDepth) {
+            if (maxDepth === undefined) maxDepth = currentMaxDepth;
+            else currentMaxDepth = maxDepth;
+
             const rootEl = document.getElementById("treeRoot");
             rootEl.innerHTML = "";
-            const data = buildTreeData(rootName, 5);
+
+            let data;
+            if (ancestorMode) {
+                data = buildAncestorData(rootName, maxDepth);
+            } else {
+                data = buildTreeData(rootName, maxDepth);
+            }
             if (data) rootEl.appendChild(renderNode(data));
             resetView();
+            updateMinimap();
         }
 
         // ── Pan & zoom ─────────────────────────────────────────────
         let scale = 0.82, tx = 0, ty = 0, dragging = false, sx = 0, sy = 0;
 
         function applyTransform() {
-            /* translate3d triggers GPU compositing layer — text re-rasterizes at device pixel ratio */
             document.getElementById("canvas").style.transform = `translate3d(${tx}px,${ty}px,0) scale(${scale})`;
+            updateMinimap();
         }
 
         function resetView() {
@@ -447,12 +753,16 @@
 
         function setupPanZoom() {
             const vp = document.getElementById("viewport");
+
+            // Mouse pan
             vp.addEventListener("mousedown", e => {
                 if (e.target.closest(".tree-node") || e.target.closest(".toggle-btn")) return;
                 dragging = true; sx = e.clientX - tx; sy = e.clientY - ty;
             });
             window.addEventListener("mousemove", e => { if (!dragging) return; tx = e.clientX - sx; ty = e.clientY - sy; applyTransform(); });
             window.addEventListener("mouseup", () => dragging = false);
+
+            // Wheel zoom
             vp.addEventListener("wheel", e => {
                 e.preventDefault();
                 const f = 0.06, old = scale;
@@ -463,6 +773,57 @@
                 ty = my - (my - ty) * (scale / old);
                 applyTransform();
             }, { passive: false });
+
+            // ── Touch support (pinch-to-zoom + pan) ───────────────
+            let touches = [];
+            let lastDist = 0;
+            let touchStartTx = 0, touchStartTy = 0;
+            let touchStartX = 0, touchStartY = 0;
+
+            vp.addEventListener("touchstart", e => {
+                touches = Array.from(e.touches);
+                if (touches.length === 1) {
+                    touchStartX = touches[0].clientX - tx;
+                    touchStartY = touches[0].clientY - ty;
+                } else if (touches.length === 2) {
+                    const dx = touches[0].clientX - touches[1].clientX;
+                    const dy = touches[0].clientY - touches[1].clientY;
+                    lastDist = Math.hypot(dx, dy);
+                    touchStartTx = tx; touchStartTy = ty;
+                }
+            }, { passive: true });
+
+            vp.addEventListener("touchmove", e => {
+                e.preventDefault();
+                const ts = Array.from(e.touches);
+                if (ts.length === 1 && touches.length === 1) {
+                    // Single finger pan
+                    tx = ts[0].clientX - touchStartX;
+                    ty = ts[0].clientY - touchStartY;
+                    applyTransform();
+                } else if (ts.length === 2) {
+                    // Pinch zoom
+                    const dx = ts[0].clientX - ts[1].clientX;
+                    const dy = ts[0].clientY - ts[1].clientY;
+                    const dist = Math.hypot(dx, dy);
+                    const ratio = dist / lastDist;
+                    const old = scale;
+                    scale = Math.min(3, Math.max(0.12, scale * ratio));
+                    // Zoom toward midpoint
+                    const r = vp.getBoundingClientRect();
+                    const midX = ((ts[0].clientX + ts[1].clientX) / 2) - r.left;
+                    const midY = ((ts[0].clientY + ts[1].clientY) / 2) - r.top;
+                    tx = midX - (midX - tx) * (scale / old);
+                    ty = midY - (midY - ty) * (scale / old);
+                    lastDist = dist;
+                    applyTransform();
+                }
+                touches = ts;
+            }, { passive: false });
+
+            vp.addEventListener("touchend", e => {
+                touches = Array.from(e.touches);
+            }, { passive: true });
         }
 
         // ── selectNodeInTree ───────────────────────────────────────
@@ -470,11 +831,8 @@
             const nd = document.querySelector(`.tree-node[data-node-name="${name}"]`);
             if (!nd) return false;
             if (!nd.classList.contains("expanded")) nd.click();
-            const r = nd.getBoundingClientRect();
-            const vr = document.getElementById("viewport").getBoundingClientRect();
-            tx = (vr.width/2) - (r.width/2) - (nd.offsetLeft * scale);
-            ty = (vr.height/2) - (r.height/2) - (nd.offsetTop * scale);
-            applyTransform(); return true;
+            centerOnNode(nd);
+            return true;
         }
 
         // ── Theme ──────────────────────────────────────────────────
@@ -495,7 +853,107 @@
 
         // ── Controls ───────────────────────────────────────────────
         function setupControls() {
+            // Root select
             document.getElementById("rootSelect").addEventListener("change", e => loadTree(e.target.value));
+
+            // Depth slider
+            const slider = document.getElementById("depthSlider");
+            const depthVal = document.getElementById("depthVal");
+            slider.addEventListener("input", () => {
+                const d = parseInt(slider.value, 10);
+                depthVal.textContent = d;
+                loadTree(document.getElementById("rootSelect").value, d);
+            });
+
+            // Ancestor mode toggle
+            const ancestorBtn = document.getElementById("ancestorToggle");
+            ancestorBtn.addEventListener("click", () => {
+                ancestorMode = !ancestorMode;
+                ancestorBtn.classList.toggle("active", ancestorMode);
+                ancestorBtn.title = ancestorMode ? "Modo descendientes (activo: antepasados)" : "Modo antepasados";
+                loadTree(document.getElementById("rootSelect").value);
+            });
+
+            // Export PNG
+            document.getElementById("exportPng").addEventListener("click", () => {
+                const vp = document.getElementById("viewport");
+                html2canvas(vp, { useCORS: true, backgroundColor: getComputedStyle(document.body).getPropertyValue("--bg").trim() || "#f5f4f2" }).then(canvas => {
+                    const link = document.createElement("a");
+                    link.download = "arbol_genealogico.png";
+                    link.href = canvas.toDataURL("image/png");
+                    link.click();
+                });
+            });
+        }
+
+        // ── Minimap ────────────────────────────────────────────────
+        function updateMinimap() {
+            const mmW = 160, mmH = 100;
+            const cv = document.getElementById("canvas");
+            const vp = document.getElementById("viewport");
+            const nodesG = document.getElementById("minimapNodes");
+            const vpRect = document.getElementById("minimapViewport");
+
+            // Gather all node positions
+            const nodeEls = cv.querySelectorAll(".tree-node");
+            if (nodeEls.length === 0) return;
+
+            // Compute bounding box of all nodes in canvas space
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            nodeEls.forEach(el => {
+                const x = el.offsetLeft, y = el.offsetTop;
+                const w = el.offsetWidth, h = el.offsetHeight;
+                if (x < minX) minX = x;
+                if (y < minY) minY = y;
+                if (x+w > maxX) maxX = x+w;
+                if (y+h > maxY) maxY = y+h;
+            });
+            const cW = maxX - minX || 1;
+            const cH = maxY - minY || 1;
+
+            // Map canvas coords → minimap coords
+            const toMM = (x, y) => ({
+                mx: ((x - minX) / cW) * mmW,
+                my: ((y - minY) / cH) * mmH
+            });
+
+            // Draw nodes
+            nodesG.innerHTML = "";
+            nodeEls.forEach(el => {
+                const { mx, my } = toMM(el.offsetLeft + el.offsetWidth/2, el.offsetTop + el.offsetHeight/2);
+                const circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
+                circle.setAttribute("cx", mx);
+                circle.setAttribute("cy", my);
+                circle.setAttribute("r", "2");
+                const g = el.classList.contains("f") ? "var(--f-dot)" : "var(--m-dot)";
+                circle.setAttribute("fill", g);
+                circle.setAttribute("opacity", "0.7");
+                nodesG.appendChild(circle);
+            });
+
+            // Viewport rectangle
+            // Viewport covers the visible area in canvas coords
+            const vpW = vp.clientWidth, vpH = vp.clientHeight;
+            // Top-left of viewport in canvas coords
+            const cvLeft = -tx / scale;
+            const cvTop  = -ty / scale;
+            const cvRight  = cvLeft + vpW / scale;
+            const cvBottom = cvTop  + vpH / scale;
+
+            const { mx: rx, my: ry } = toMM(cvLeft, cvTop);
+            const { mx: rx2, my: ry2 } = toMM(cvRight, cvBottom);
+
+            vpRect.setAttribute("x", Math.max(0, rx));
+            vpRect.setAttribute("y", Math.max(0, ry));
+            vpRect.setAttribute("width",  Math.min(mmW, rx2 - rx));
+            vpRect.setAttribute("height", Math.min(mmH, ry2 - ry));
+        }
+
+        // ── Loading overlay ────────────────────────────────────────
+        function hideSpinner() {
+            const overlay = document.getElementById("loadingOverlay");
+            overlay.classList.add("hidden");
+            setTimeout(() => overlay.style.display = "none", 350);
         }
 
         // ── Init ───────────────────────────────────────────────────
@@ -513,6 +971,9 @@
                 loadTree(initRoot);
             }
             if (highlight) setTimeout(() => selectNodeInTree(highlight), 350);
+
+            // Hide spinner once tree is built
+            requestAnimationFrame(() => requestAnimationFrame(() => hideSpinner()));
         });
     </script>
 </body>

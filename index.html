@@ -1,11 +1,423 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="light">
 <head>
-  <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="0; url=visor_genealogia.html">
-  <title>Genealogía Bíblica</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genealogía Bíblica · Inicio</title>
+    <meta name="description" content="Explorador interactivo de la genealogía bíblica de 1 Crónicas. Árbol visual, fichas detalladas, grafo de relaciones y mapa geográfico.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:        #f5f4f2;
+            --surface:   #ffffff;
+            --border:    #e4e2dc;
+            --text:      #1a1916;
+            --muted:     #7a7870;
+            --subtle:    #b0ada6;
+            --accent:    #1a56db;
+            --accent-bg: #eef3ff;
+            --m-dot:     #3b82f6;
+            --f-dot:     #e879a0;
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 24px;
+        }
+        [data-theme="dark"] {
+            --bg:        #111110;
+            --surface:   #1c1b19;
+            --border:    #2e2c28;
+            --text:      #f0ede8;
+            --muted:     #888580;
+            --subtle:    #5a5753;
+            --accent:    #5b8def;
+            --accent-bg: #1a2340;
+            --m-dot:     #60a5fa;
+            --f-dot:     #f472b6;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { height: 100%; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Topbar ── */
+        .topbar {
+            height: 52px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 24px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .topbar-brand {
+            font-size: 13px; font-weight: 600; color: var(--text);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .topbar-brand-dot { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; }
+        .topbar-sep { flex: 1; }
+        .topbar-btn {
+            display: flex; align-items: center; gap: 5px;
+            padding: 5px 11px; font-size: 12px; font-weight: 500;
+            color: var(--muted); background: transparent;
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+            cursor: pointer; text-decoration: none; font-family: inherit;
+            transition: border-color .15s, color .15s;
+        }
+        .topbar-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .topbar-btn svg { width: 13px; height: 13px; fill: currentColor; }
+
+        /* ── Hero ── */
+        .hero {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 72px 24px 48px;
+            gap: 16px;
+        }
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 14px; font-size: 11.5px; font-weight: 600;
+            background: var(--accent-bg); color: var(--accent);
+            border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+            border-radius: 20px; letter-spacing: .3px;
+        }
+        .hero-badge svg { width: 12px; height: 12px; fill: currentColor; }
+        .hero-title {
+            font-size: clamp(32px, 6vw, 56px);
+            font-weight: 800;
+            letter-spacing: -1.5px;
+            line-height: 1.1;
+            color: var(--text);
+        }
+        .hero-title span {
+            background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero-sub {
+            font-size: 16px;
+            color: var(--muted);
+            max-width: 480px;
+            line-height: 1.65;
+        }
+        .hero-stats {
+            display: flex;
+            gap: 24px;
+            margin-top: 8px;
+        }
+        .hero-stat {
+            display: flex; flex-direction: column; align-items: center; gap: 2px;
+        }
+        .hero-stat-val {
+            font-size: 22px; font-weight: 700; color: var(--text);
+        }
+        .hero-stat-label {
+            font-size: 11px; color: var(--subtle); font-weight: 500;
+        }
+
+        /* ── Nav cards grid ── */
+        .cards-section {
+            flex: 1;
+            padding: 0 24px 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        .nav-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            text-decoration: none;
+            color: inherit;
+            position: relative;
+            overflow: hidden;
+            transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+        }
+        .nav-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            transition: opacity .2s ease;
+            border-radius: inherit;
+        }
+        .nav-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(0,0,0,.1);
+        }
+        .nav-card:hover::before { opacity: 1; }
+
+        /* Card accent colors */
+        .card-ficha { border-top: 3px solid #3b82f6; }
+        .card-ficha::before { background: radial-gradient(circle at 0% 0%, rgba(59,130,246,.06) 0%, transparent 70%); }
+        .card-ficha:hover { border-color: #3b82f6; }
+
+        .card-arbol { border-top: 3px solid #10b981; }
+        .card-arbol::before { background: radial-gradient(circle at 0% 0%, rgba(16,185,129,.06) 0%, transparent 70%); }
+        .card-arbol:hover { border-color: #10b981; }
+
+        .card-grafo { border-top: 3px solid #8b5cf6; }
+        .card-grafo::before { background: radial-gradient(circle at 0% 0%, rgba(139,92,246,.06) 0%, transparent 70%); }
+        .card-grafo:hover { border-color: #8b5cf6; }
+
+        .card-mapa { border-top: 3px solid #f59e0b; }
+        .card-mapa::before { background: radial-gradient(circle at 0% 0%, rgba(245,158,11,.06) 0%, transparent 70%); }
+        .card-mapa:hover { border-color: #f59e0b; }
+
+        .card-icon {
+            width: 48px; height: 48px;
+            border-radius: var(--radius-md);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .card-icon svg { width: 24px; height: 24px; fill: #fff; }
+
+        .icon-ficha { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        .icon-arbol { background: linear-gradient(135deg, #10b981, #059669); }
+        .icon-grafo { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+        .icon-mapa  { background: linear-gradient(135deg, #f59e0b, #d97706); }
+
+        .card-content { display: flex; flex-direction: column; gap: 6px; }
+        .card-title { font-size: 16px; font-weight: 700; color: var(--text); }
+        .card-desc { font-size: 13px; color: var(--muted); line-height: 1.55; }
+
+        .card-tags {
+            display: flex; flex-wrap: wrap; gap: 5px;
+            margin-top: 4px;
+        }
+        .card-tag {
+            padding: 3px 9px; font-size: 11px; font-weight: 500;
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 20px; color: var(--subtle);
+        }
+
+        .card-arrow {
+            position: absolute; right: 20px; bottom: 20px;
+            width: 28px; height: 28px;
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            transition: background .2s, border-color .2s;
+        }
+        .card-arrow svg { width: 13px; height: 13px; fill: var(--subtle); transition: fill .2s; }
+        .nav-card:hover .card-arrow { background: var(--accent); border-color: var(--accent); }
+        .nav-card:hover .card-arrow svg { fill: #fff; }
+
+        /* ── Footer ── */
+        .footer {
+            padding: 20px 24px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: 12px;
+            color: var(--subtle);
+        }
+
+        /* ── Animations ── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .hero { animation: fadeUp .5s ease both; }
+        .nav-card { animation: fadeUp .5s ease both; }
+        .nav-card:nth-child(1) { animation-delay: .05s; }
+        .nav-card:nth-child(2) { animation-delay: .1s; }
+        .nav-card:nth-child(3) { animation-delay: .15s; }
+        .nav-card:nth-child(4) { animation-delay: .2s; }
+
+        @media (max-width: 600px) {
+            .hero { padding: 48px 20px 32px; }
+            .hero-stats { gap: 16px; }
+            .cards-section { padding: 0 16px 48px; }
+        }
+    </style>
 </head>
 <body>
-  <p>Redirigiendo… <a href="visor_genealogia.html">Haz clic aquí si no se redirige.</a></p>
+
+    <!-- Topbar -->
+    <header class="topbar">
+        <div class="topbar-brand">
+            <div class="topbar-brand-dot"></div>
+            Genealogía Bíblica
+        </div>
+        <span style="font-size:11px;color:var(--subtle)">1 Crónicas 1–9</span>
+        <div class="topbar-sep"></div>
+        <button class="topbar-btn" id="themeToggle">
+            <svg id="sunIcon" style="display:none" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3zm0-11c-.55 0-1-.45-1-1V2c0-.55.45-1 1-1s1 .45 1 1v1c0 .55-.45 1-1 1zm0 16c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1s1-.45 1-1v-1c0-.55-.45-1-1-1zm8-8c0-.55-.45-1-1-1h-1c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zM6 12c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zm11.66-5.66l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zm-11.31 11.3l-.71.71c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0l.71-.71c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0zm11.31.01l-.71.71c-.39-.39-1.02-.39-1.41 0l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zM6.35 6.34l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41z"/></svg>
+            <svg id="moonIcon" viewBox="0 0 24 24"><path d="M12.3 22h-.1c-5.5 0-10-4.5-10-10 0-4.8 3.5-8.9 8.3-9.7.6-.1 1.1.4 1 1-.4 2.4.4 4.9 2.1 6.6 1.7 1.7 4.2 2.5 6.6 2.1.6-.1 1.1.4 1 1-.8 4.8-4.9 8.3-9.7 8.3z"/></svg>
+            Tema
+        </button>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-badge">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+            Genealogía Bíblica Interactiva
+        </div>
+        <h1 class="hero-title">
+            Explora los linajes<br>de <span>1 Crónicas 1–9</span>
+        </h1>
+        <p class="hero-sub">
+            Árbol genealógico completo desde Adán hasta los exiliados de Babilonia.
+            Cuatro vistas interactivas para explorar cada personaje, relación y lugar.
+        </p>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <span class="hero-stat-val">3 600+</span>
+                <span class="hero-stat-label">Personajes</span>
+            </div>
+            <div class="hero-stat">
+                <span class="hero-stat-val">9</span>
+                <span class="hero-stat-label">Capítulos</span>
+            </div>
+            <div class="hero-stat">
+                <span class="hero-stat-val">4</span>
+                <span class="hero-stat-label">Vistas</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Navigation cards -->
+    <section class="cards-section">
+        <div class="cards-grid">
+
+            <!-- Fichas -->
+            <a href="visor_genealogia.html" class="nav-card card-ficha" id="card-fichas">
+                <div class="card-icon icon-ficha">
+                    <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                </div>
+                <div class="card-content">
+                    <div class="card-title">Visor de Fichas</div>
+                    <div class="card-desc">
+                        Busca y explora cada personaje con su ficha completa: padre, madre, cónyuge, hijos, significado del nombre, reseña histórica y referencias bíblicas.
+                    </div>
+                    <div class="card-tags">
+                        <span class="card-tag">Búsqueda fuzzy</span>
+                        <span class="card-tag">Historial ← →</span>
+                        <span class="card-tag">Modo comparar</span>
+                        <span class="card-tag">Hermanos</span>
+                    </div>
+                </div>
+                <div class="card-arrow">
+                    <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+                </div>
+            </a>
+
+            <!-- Árbol -->
+            <a href="arbol_genealogico.html" class="nav-card card-arbol" id="card-arbol">
+                <div class="card-icon icon-arbol">
+                    <svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+                </div>
+                <div class="card-content">
+                    <div class="card-title">Árbol Genealógico</div>
+                    <div class="card-desc">
+                        Visualización jerárquica interactiva con pan y zoom. Selecciona el linaje raíz y navega descendiendo generación por generación.
+                    </div>
+                    <div class="card-tags">
+                        <span class="card-tag">Profundidad ajustable</span>
+                        <span class="card-tag">Modo antepasados</span>
+                        <span class="card-tag">Exportar PNG</span>
+                        <span class="card-tag">Touch</span>
+                    </div>
+                </div>
+                <div class="card-arrow">
+                    <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+                </div>
+            </a>
+
+            <!-- Grafo -->
+            <a href="grafo_relaciones.html" class="nav-card card-grafo" id="card-grafo">
+                <div class="card-icon icon-grafo">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+                </div>
+                <div class="card-content">
+                    <div class="card-title">Grafo de Relaciones</div>
+                    <div class="card-desc">
+                        Red de fuerza dirigida con D3.js que muestra todos los personajes y sus vínculos familiares como un grafo interactivo.
+                    </div>
+                    <div class="card-tags">
+                        <span class="card-tag">D3.js Force</span>
+                        <span class="card-tag">Filtro linaje</span>
+                        <span class="card-tag">Ficha lateral</span>
+                        <span class="card-tag">Estadísticas</span>
+                    </div>
+                </div>
+                <div class="card-arrow">
+                    <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+                </div>
+            </a>
+
+            <!-- Mapa -->
+            <a href="mapa_geografico.html" class="nav-card card-mapa" id="card-mapa">
+                <div class="card-icon icon-mapa">
+                    <svg viewBox="0 0 24 24"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
+                </div>
+                <div class="card-content">
+                    <div class="card-title">Mapa Geográfico</div>
+                    <div class="card-desc">
+                        Mapa interactivo del Oriente Próximo con los lugares de nacimiento de cada personaje, agrupados por región y filtrados por linaje.
+                    </div>
+                    <div class="card-tags">
+                        <span class="card-tag">Leaflet.js</span>
+                        <span class="card-tag">Clustering</span>
+                        <span class="card-tag">Filtros</span>
+                        <span class="card-tag">Modo oscuro</span>
+                    </div>
+                </div>
+                <div class="card-arrow">
+                    <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+                </div>
+            </a>
+
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        Genealogía Bíblica · 1 Crónicas 1–9 · Datos procesados de fuentes bíblicas
+    </footer>
+
+    <script>
+        // Theme
+        const toggle = document.getElementById('themeToggle');
+        const sun = document.getElementById('sunIcon'), moon = document.getElementById('moonIcon');
+        const applyTheme = t => {
+            document.documentElement.setAttribute('data-theme', t);
+            sun.style.display  = t === 'dark' ? 'block' : 'none';
+            moon.style.display = t === 'dark' ? 'none' : 'block';
+        };
+        applyTheme(localStorage.getItem('theme') || 'light');
+        toggle.addEventListener('click', () => {
+            const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('theme', next); applyTheme(next);
+        });
+    </script>
 </body>
 </html>

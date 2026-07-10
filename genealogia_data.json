@@ -1,6 +1,4 @@
-// genealogia_data.js — generado automáticamente por organizar_genealogia.py
-// NO editar este archivo directamente; editar genealogia_organizada.xlsx
-const GENEALOGIA_DATA = [
+[
   {
     "Padre": "Adam",
     "Madre": "",
@@ -8080,4 +8078,4 @@ const GENEALOGIA_DATA = [
     "Referencias_URLs": "",
     "Enlace_Externo": ""
   }
-];
+]

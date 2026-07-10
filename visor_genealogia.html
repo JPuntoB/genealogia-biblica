@@ -53,6 +53,20 @@
             overflow: hidden;
         }
 
+        /* Spinner */
+        #loadingOverlay {
+            position: fixed; inset: 0; background: var(--bg);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999; flex-direction: column; gap: 16px;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .spinner {
+            width: 36px; height: 36px;
+            border: 3px solid var(--border); border-top-color: var(--accent);
+            border-radius: 50%; animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
         /* ── Top bar ──────────────────────────────────────────── */
         .topbar {
             height: 52px;
@@ -64,6 +78,7 @@
             background: var(--surface);
             border-bottom: 1px solid var(--border);
             flex-shrink: 0;
+            z-index: 10;
         }
         .topbar-brand {
             font-size: 13px;
@@ -91,14 +106,28 @@
             text-decoration: none;
             font-family: inherit;
         }
+        .topbar-btn:hover { border-color: var(--accent); color: var(--accent); }
         .topbar-btn svg { width: 13px; height: 13px; fill: currentColor; flex-shrink: 0; }
+        .topbar-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Hamburger menu button */
+        .menu-toggle {
+            display: none;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 6px;
+            color: var(--text);
+        }
+        .menu-toggle svg { width: 20px; height: 20px; fill: currentColor; }
 
         /* ── Main layout ──────────────────────────────────────── */
         .workspace {
             flex: 1;
             display: grid;
-            grid-template-columns: 260px 1fr;
+            grid-template-columns: 280px 1fr;
             overflow: hidden;
+            position: relative;
         }
 
         /* ── Sidebar ──────────────────────────────────────────── */
@@ -108,6 +137,7 @@
             border-right: 1px solid var(--border);
             background: var(--surface);
             overflow: hidden;
+            z-index: 5;
         }
         .sidebar-search-wrap {
             padding: 12px;
@@ -135,6 +165,42 @@
         }
         .sidebar-search::placeholder { color: var(--subtle); }
         .sidebar-search:focus { border-color: var(--accent); }
+
+        /* Linaje / Tribu Filter Pills */
+        .filter-section {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .filter-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--subtle);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .filter-pills {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+        .pill-btn {
+            font-size: 11px;
+            font-weight: 500;
+            padding: 3px 8px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--muted);
+            cursor: pointer;
+        }
+        .pill-btn.active {
+            background: var(--accent-bg);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
 
         .quick-pills {
             display: flex;
@@ -193,6 +259,7 @@
             flex-direction: column;
             overflow: hidden;
             background: var(--bg);
+            position: relative;
         }
 
         /* Breadcrumb */
@@ -219,6 +286,14 @@
         .bc-node:hover { color: var(--accent); }
         .bc-sep { color: var(--subtle); font-size: 10px; }
 
+        /* Comparison container */
+        .detail-comparison-wrapper {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
         /* Scroll area */
         .detail-scroll {
             flex: 1;
@@ -226,10 +301,25 @@
             padding: 28px 28px 40px;
             display: flex;
             gap: 28px;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+        .detail-scroll.loading-person {
+            opacity: 0;
+            transform: translateY(8px);
         }
         .detail-scroll::-webkit-scrollbar { width: 5px; }
         .detail-scroll::-webkit-scrollbar-track { background: transparent; }
         .detail-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .comparison-panel {
+            border-left: 1px solid var(--border);
+            background: rgba(0,0,0,0.01);
+            display: none;
+            flex-direction: column;
+        }
+        [data-theme="dark"] .comparison-panel {
+            background: rgba(255,255,255,0.01);
+        }
 
         /* Left column */
         .left-col {
@@ -277,7 +367,7 @@
             color: var(--subtle);
             letter-spacing: .3px;
             text-transform: uppercase;
-            width: 64px;
+            width: 72px;
             flex-shrink: 0;
             padding-top: 1px;
         }
@@ -291,8 +381,9 @@
         .meta-val.link {
             color: var(--accent);
             cursor: pointer;
+            text-decoration: underline;
         }
-        .meta-val.link:hover { text-decoration: underline; }
+        .meta-val.link:hover { color: var(--accent); }
 
         /* Right column */
         .right-col {
@@ -321,6 +412,7 @@
             display: flex;
             gap: 8px;
             margin-top: 8px;
+            flex-wrap: wrap;
         }
 
         .section-label {
@@ -399,26 +491,134 @@
             align-items: center; justify-content: center;
             height: 100%; gap: 12px;
             color: var(--subtle);
+            margin: auto;
         }
         .empty-state svg { width: 40px; height: 40px; fill: currentColor; opacity: .4; }
         .empty-state p { font-size: 13px; }
+
+        /* Copied tooltip */
+        .copied-tooltip {
+            position: absolute;
+            background: var(--text);
+            color: var(--surface);
+            padding: 4px 8px;
+            font-size: 11px;
+            border-radius: 4px;
+            font-weight: 500;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 1000;
+        }
+        .copied-tooltip.visible { opacity: 1; }
+
+        /* Lineage timeline style */
+        .lineage-timeline-container {
+            margin-top: 12px;
+        }
+        .timeline-track {
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            position: relative;
+            margin: 20px 0;
+        }
+        .timeline-point {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--subtle);
+            border: 2px solid var(--surface);
+            cursor: pointer;
+        }
+        .timeline-point.active {
+            background: var(--accent);
+            width: 16px;
+            height: 16px;
+        }
+        .timeline-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        /* ── Responsive / Sidebar overlay for Mobile ──────────── */
+        @media (max-width: 640px) {
+            .menu-toggle { display: block; }
+            .workspace { grid-template-columns: 1fr; }
+            .sidebar {
+                position: absolute;
+                left: 0; top: 0; bottom: 0; width: 280px;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            }
+            .sidebar.open { transform: translateX(0); }
+            .detail-comparison-wrapper { flex-direction: column; overflow-y: auto; }
+            .comparison-panel { border-left: none; border-top: 1px solid var(--border); }
+        }
+
+        /* ── CSS Print optimizations ──────────────────────────── */
+        @media print {
+            .topbar, .sidebar, .action-row, .breadcrumb, #loadingOverlay { display: none !important; }
+            body, .workspace, .detail, .detail-scroll { height: auto !important; overflow: visible !important; background: white !important; color: black !important; }
+            .workspace { display: block !important; }
+            .detail-scroll { display: flex !important; flex-direction: column !important; padding: 0 !important; gap: 20px !important; }
+            .left-col { width: 100% !important; flex-direction: row !important; gap: 20px !important; align-items: flex-start !important; }
+            .avatar-block { width: 120px !important; height: 120px !important; }
+            .meta-card { flex: 1 !important; }
+            .right-col { width: 100% !important; }
+        }
     </style>
 </head>
 <body>
 
+    <!-- Loading Spinner Overlay -->
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <span style="font-size:13px;color:var(--muted);font-weight:500">Cargando datos genealógicos...</span>
+    </div>
+
     <!-- Top bar -->
     <header class="topbar">
+        <button class="menu-toggle" id="menuToggle" aria-label="Menu">
+            <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        </button>
         <div class="topbar-brand">
             <div class="topbar-brand-dot"></div>
             Genealogía Bíblica
         </div>
         <span style="font-size:12px; color:var(--subtle); padding-left:4px;">1 Crónicas 1–9</span>
+        
+        <!-- Navigation Buttons -->
+        <button class="topbar-btn" id="btnBack" aria-label="Atrás" disabled>
+            <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        </button>
+        <button class="topbar-btn" id="btnForward" aria-label="Adelante" disabled>
+            <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+        </button>
+
         <div class="topbar-sep"></div>
-        <a href="arbol_genealogico.html" class="topbar-btn">
+
+        <a href="index.html" class="topbar-btn" title="Inicio">
+            Inicio
+        </a>
+        <a href="arbol_genealogico.html" class="topbar-btn" title="Árbol Gráfico">
             <svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
             Árbol gráfico
         </a>
-        <button class="topbar-btn" id="themeToggle">
+        <a href="grafo_relaciones.html" class="topbar-btn" title="Grafo">
+            Grafo
+        </a>
+        <a href="mapa_geografico.html" class="topbar-btn" title="Mapa">
+            Mapa
+        </a>
+        
+        <button class="topbar-btn" id="themeToggle" aria-label="Cambiar tema">
             <svg id="sunIcon" style="display:none" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3zm0-11c-.55 0-1-.45-1-1V2c0-.55.45-1 1-1s1 .45 1 1v1c0 .55-.45 1-1 1zm0 16c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1s1-.45 1-1v-1c0-.55-.45-1-1-1zm8-8c0-.55-.45-1-1-1h-1c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zM6 12c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zm11.66-5.66l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zm-11.31 11.3l-.71.71c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0l.71-.71c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0zm11.31.01l-.71.71c-.39-.39-1.02-.39-1.41 0l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zM6.35 6.34l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41z"/></svg>
             <svg id="moonIcon" viewBox="0 0 24 24"><path d="M12.3 22h-.1c-5.5 0-10-4.5-10-10 0-4.8 3.5-8.9 8.3-9.7.6-.1 1.1.4 1 1-.4 2.4.4 4.9 2.1 6.6 1.7 1.7 4.2 2.5 6.6 2.1.6-.1 1.1.4 1 1-.8 4.8-4.9 8.3-9.7 8.3z"/></svg>
             Tema
@@ -429,11 +629,25 @@
     <div class="workspace">
 
         <!-- Sidebar -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
             <div class="sidebar-search-wrap">
                 <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                 <input type="text" class="sidebar-search" id="searchInput" placeholder="Buscar personaje…">
             </div>
+
+            <!-- Linaje filter section -->
+            <div class="filter-section">
+                <span class="filter-label">Filtrar linaje raíz</span>
+                <div class="filter-pills">
+                    <button class="pill-btn active" data-linaje="Todos">Todos</button>
+                    <button class="pill-btn" data-linaje="Adam">Adam</button>
+                    <button class="pill-btn" data-linaje="Noé">Noé</button>
+                    <button class="pill-btn" data-linaje="Abraham">Abraham</button>
+                    <button class="pill-btn" data-linaje="Israel">Israel</button>
+                    <button class="pill-btn" data-linaje="David">David</button>
+                </div>
+            </div>
+
             <div class="quick-pills">
                 <button class="pill" onclick="quickSelect('Adam')">Adam</button>
                 <button class="pill" onclick="quickSelect('Noé')">Noé</button>
@@ -452,140 +666,212 @@
                 <span style="color:var(--subtle); font-size:11px;">Linaje</span>
             </div>
 
-            <!-- Scrollable content -->
-            <div class="detail-scroll" id="detailScroll">
-                <div class="empty-state" id="emptyState">
-                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
-                    <p>Selecciona un personaje en el panel izquierdo</p>
-                </div>
-
-                <!-- Left col -->
-                <div class="left-col" id="leftCol" style="display:none">
-                    <div class="avatar-block" id="avatarBlock">
-                        <img id="portraitImg" alt="Retrato" style="display:none">
-                        <div class="avatar-placeholder" id="portraitPlaceholder">?</div>
+            <!-- Comparison Split Panel wrapper -->
+            <div class="detail-comparison-wrapper">
+                
+                <!-- Main detail view -->
+                <div class="detail-scroll" id="detailScroll">
+                    <div class="empty-state" id="emptyState">
+                        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                        <p>Selecciona un personaje en el panel izquierdo</p>
                     </div>
-                    <div class="meta-card">
-                        <div class="meta-row">
-                            <span class="meta-key">Género</span>
-                            <span class="meta-val" id="valGender">—</span>
+
+                    <!-- Left col -->
+                    <div class="left-col" id="leftCol" style="display:none">
+                        <div class="avatar-block" id="avatarBlock">
+                            <img id="portraitImg" alt="Retrato" style="display:none">
+                            <div class="avatar-placeholder" id="portraitPlaceholder">?</div>
                         </div>
-                        <div class="meta-row">
-                            <span class="meta-key">Padre</span>
-                            <span class="meta-val" id="valFather">—</span>
-                        </div>
-                        <div class="meta-row">
-                            <span class="meta-key">Madre</span>
-                            <span class="meta-val" id="valMother">—</span>
-                        </div>
-                        <div class="meta-row">
-                            <span class="meta-key">Cónyuge</span>
-                            <span class="meta-val" id="valSpouse">—</span>
-                        </div>
-                        <div class="meta-row">
-                            <span class="meta-key">Origen</span>
-                            <span class="meta-val" id="valBirthPlace">—</span>
+                        <div class="meta-card">
+                            <div class="meta-row">
+                                <span class="meta-key">Género</span>
+                                <span class="meta-val" id="valGender">—</span>
+                            </div>
+                            <div class="meta-row">
+                                <span class="meta-key">Generación</span>
+                                <span class="meta-val" id="valGeneration">—</span>
+                            </div>
+                            <div class="meta-row">
+                                <span class="meta-key">Padre</span>
+                                <span class="meta-val" id="valFather">—</span>
+                            </div>
+                            <div class="meta-row">
+                                <span class="meta-key">Madre</span>
+                                <span class="meta-val" id="valMother">—</span>
+                            </div>
+                            <div class="meta-row">
+                                <span class="meta-key">Cónyuge</span>
+                                <span class="meta-val" id="valSpouse">—</span>
+                            </div>
+                            <div class="meta-row">
+                                <span class="meta-key">Origen</span>
+                                <span class="meta-val" id="valBirthPlace">—</span>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Right col -->
-                <div class="right-col" id="rightCol" style="display:none">
-                    <div class="name-block">
-                        <div class="person-name" id="valName"></div>
-                        <div class="person-meaning" id="valMeaning"></div>
-                        <div class="action-row">
-                            <a href="#" id="viewInTreeBtn" class="topbar-btn" target="_blank" style="display:none">
-                                <svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
-                                Ver en árbol
+                    <!-- Right col -->
+                    <div class="right-col" id="rightCol" style="display:none">
+                        <div class="name-block">
+                            <div class="person-name" id="valName"></div>
+                            <div class="person-meaning" id="valMeaning"></div>
+                            
+                            <!-- Timeline Indicator -->
+                            <div class="lineage-timeline-container" id="timelineContainer" style="display:none">
+                                <div class="timeline-track" id="timelineTrack"></div>
+                                <div class="timeline-labels">
+                                    <span>Adán</span>
+                                    <span>Noé</span>
+                                    <span>Abraham</span>
+                                    <span>Israel</span>
+                                    <span>David</span>
+                                </div>
+                            </div>
+
+                            <div class="action-row">
+                                <a href="#" id="viewInTreeBtn" class="topbar-btn" target="_blank" style="display:none">
+                                    <svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+                                    Ver en árbol
+                                </a>
+                                <button class="topbar-btn" id="btnCompartir">Compartir enlace</button>
+                                <button class="topbar-btn" id="btnComparar">Comparar ficha</button>
+                                <button class="topbar-btn" id="btnPrint" onclick="window.print()">Imprimir</button>
+                            </div>
+                        </div>
+
+                        <!-- Children -->
+                        <div id="childrenSection">
+                            <div class="section-label">Descendientes directos</div>
+                            <div class="children-grid" id="childrenGrid"></div>
+                        </div>
+
+                        <!-- Siblings (Hermanos) -->
+                        <div id="siblingsSection" style="display:none">
+                            <div class="section-label">Hermanos</div>
+                            <div class="children-grid" id="siblingsGrid"></div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div id="notesSection">
+                            <div class="section-label">Reseña histórica</div>
+                            <div class="notes-block">
+                                <p class="notes-text" id="valNotes"></p>
+                            </div>
+                        </div>
+
+                        <!-- References -->
+                        <div id="refsSection">
+                            <div class="section-label">Referencias bíblicas</div>
+                            <div class="refs-wrap" id="refsContainer"></div>
+                        </div>
+
+                        <!-- External link (Enlace_Externo column) -->
+                        <div id="extLinkRow" style="display:none; margin-top:12px;">
+                            <a id="extLinkBtn" href="#" target="_blank" rel="noopener noreferrer" class="topbar-btn" style="font-size:12px; gap:6px;">
+                                <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                                Más información
                             </a>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Children -->
-                    <div id="childrenSection">
-                        <div class="section-label">Descendientes directos</div>
-                        <div class="children-grid" id="childrenGrid"></div>
+                <!-- Comparison panel view (duplicated layout dynamically controlled) -->
+                <div class="detail-scroll comparison-panel" id="comparisonPanel" style="flex:1;">
+                    <div class="name-block" style="padding-bottom:12px; border-bottom:1px solid var(--border); display:flex; flex-direction:row; justify-content:space-between; align-items:center;">
+                        <span style="font-weight:700; color:var(--accent);">Ficha comparativa</span>
+                        <button class="topbar-btn" id="btnCloseComparison" style="padding:2px 8px; font-size:11px;">Cerrar</button>
                     </div>
-
-                    <!-- Notes -->
-                    <div id="notesSection">
-                        <div class="section-label">Reseña histórica</div>
-                        <div class="notes-block">
-                            <p class="notes-text" id="valNotes"></p>
+                    <div style="display:flex; gap:16px; margin-top:16px; flex:1;">
+                        <div class="left-col" id="compLeftCol">
+                            <div class="avatar-block">
+                                <div class="avatar-placeholder" id="compPortraitPlaceholder">?</div>
+                            </div>
+                            <div class="meta-card">
+                                <div class="meta-row"><span class="meta-key">Género</span><span class="meta-val" id="compGender">—</span></div>
+                                <div class="meta-row"><span class="meta-key">Generación</span><span class="meta-val" id="compGeneration">—</span></div>
+                                <div class="meta-row"><span class="meta-key">Padre</span><span class="meta-val" id="compFather">—</span></div>
+                                <div class="meta-row"><span class="meta-key">Madre</span><span class="meta-val" id="compMother">—</span></div>
+                                <div class="meta-row"><span class="meta-key">Cónyuge</span><span class="meta-val" id="compSpouse">—</span></div>
+                            </div>
+                        </div>
+                        <div class="right-col" id="compRightCol">
+                            <div class="name-block">
+                                <div class="person-name" id="compName"></div>
+                                <div class="person-meaning" id="compMeaning"></div>
+                            </div>
+                            <div>
+                                <div class="section-label">Reseña histórica</div>
+                                <div class="notes-block">
+                                    <p class="notes-text" id="compNotes"></p>
+                                </div>
+                            </div>
                         </div>
                     </div>
-
-                    <!-- References -->
-                    <div id="refsSection">
-                        <div class="section-label">Referencias bíblicas</div>
-                        <div class="refs-wrap" id="refsContainer"></div>
-                    </div>
-
-                    <!-- External link (Enlace_Externo column) -->
-                    <div id="extLinkRow" style="display:none; margin-top:12px;">
-                        <a id="extLinkBtn" href="#" target="_blank" rel="noopener noreferrer" class="topbar-btn" style="font-size:12px; gap:6px;">
-                            <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
-                            Más información
-                        </a>
-                    </div>
                 </div>
+
             </div>
         </main>
     </div>
 
+    <span class="copied-tooltip" id="copiedTooltip">¡Copiado!</span>
+
     <script src="genealogia_data.js"></script>
     <script>
         const people = {};
+        const historyNav = [];
+        let historyIdx = -1;
+        let isComparing = false;
+        let selectedPersonName = "";
+        let filterLineage = "Todos";
 
         const localPatriarchDetails = {
             "Adam": {
                 lugar: "Jardín del Edén",
-                significado: "Derivado del hebreo «אָדָם» (adam), significa «hombre» o «humanidad»; también asociado con «tierra» o «suelo» (adamah), indicando que fue formado del polvo.",
+                significado: "Derivado del hebreo «אָדָם» (adam), significa «hombre» o «humanidad»; también asociado con «tierra» o «suelo» (adamah).",
                 cruzada: "1 Crónicas 1 [Cruces: Adam: Génesis 1:26-27, 2:7, 5:1-5; Lucas 3:38; Romanos 5:12-21]",
-                adicional: "Primer ser humano creado por Dios en el relato del Génesis. Colocado en el Edén, desobedece la orden divina comiendo del árbol prohibido junto a Eva y es expulsado. En el Nuevo Testamento es presentado como la cabeza federal de la humanidad caída, en contraste con Jesucristo (el postrer Adán)."
+                adicional: "Primer ser humano creado por Dios. Colocado en el Edén, expulsado tras desobedecer."
             },
             "Eva": {
                 lugar: "Jardín del Edén",
                 significado: "Del hebreo «חַוָּה» (Chavah), que significa «vida» o «madre de todos los vivientes».",
                 cruzada: "Génesis 2:21-25, 3:1-20; 2 Corintios 11:3; 1 Timoteo 2:13",
-                adicional: "Primera mujer, creada de la costilla de Adán. Seducida por la serpiente en la caída. Madre de Caín, Abel, Set y otros hijos."
+                adicional: "Primera mujer, creada de la costilla de Adán. Seducida por la serpiente en la caída."
             },
             "Set": {
                 lugar: "Fuera del Edén",
                 significado: "Del hebreo «שֵׁת» (Sheth), que significa «sustituto» o «designado».",
                 cruzada: "1 Crónicas 1 [Cruces: Set: Génesis 4:25-26, 5:3-8; Lucas 3:38]",
-                adicional: "Tercer hijo de Adán y Eva, nacido después de que Caín mató a Abel. De su línea desciende Noé y, eventualmente, la genealogía mesiánica."
+                adicional: "Tercer hijo de Adán y Eva, nacido después de que Caín mató a Abel."
             },
             "Noé": {
                 lugar: "Tierra pre-diluviana / Mesopotamia",
                 significado: "Del hebreo «נֹחַ» (Noach), que significa «descanso», «consuelo» o «alivio».",
                 cruzada: "1 Crónicas 1 [Cruces: Noé: Génesis 5:28-32, caps. 6-9; Lucas 3:36; Hebreos 11:7; 2 Pedro 2:5]",
-                adicional: "Hombre justo y perfecto en sus generaciones que halló gracia ante Dios. Construyó el arca para salvar a su familia y a las especies del Diluvio universal."
+                adicional: "Hombre justo. Construyó el arca para salvar a su familia y a las especies del Diluvio universal."
             },
             "Abraham": {
                 lugar: "Ur de los Caldeos",
                 significado: "Del hebreo «אַבְרָהָם» (Avraham), que significa «padre de multitudes». Originalmente Abram («padre enaltecido»).",
                 cruzada: "1 Crónicas 1 [Cruces: Abraham: Génesis 11:26-32, caps. 12-25; Lucas 3:34; Romanos 4; Gálatas 3]",
-                adicional: "Patriarca hebreo clave. Dios le ordenó salir de Ur de los Caldeos hacia Canaán y le prometió una descendencia incontable. Es el padre de la fe en la teología bíblica."
+                adicional: "Patriarca clave. Dios le ordenó salir de Ur de los Caldeos hacia Canaán y le prometió una descendencia incontable."
             },
             "Israel": {
                 lugar: "Padan-aram",
-                significado: "Del hebreo «יִשְׂרָאֵל» (Yisrael), que significa «el que lucha con Dios» o «príncipe de Dios». Originalmente Jacob («suplantador»).",
+                significado: "Del hebreo «יִשְׂרָאֵล» (Yisrael), que significa «el que lucha con Dios» o «príncipe de Dios».",
                 cruzada: "1 Crónicas 2 [Cruces: Israel: Génesis 25-35, 46-50; Lucas 3:34; Romanos 9]",
-                adicional: "Hijo de Isaac y Rebeca. Luchó con un ángel en Peniel y su nombre fue cambiado a Israel. Padre de las doce tribus de Israel."
+                adicional: "Hijo de Isaac y Rebeca. Luchó con un ángel en Peniel y su nombre fue cambiado a Israel. Padre de las doce tribus."
             },
             "David": {
                 lugar: "Belén",
                 significado: "Del hebreo «דָּוִד» (David), que significa «amado».",
                 cruzada: "1 Crónicas 3 [Cruces: David: 1 Samuel 16-31; 2 Samuel; Mateo 1; Lucas 3]",
-                adicional: "Segundo rey de Israel unificado. Venció a Goliat, escribió gran parte de los Salmos, y recibió la promesa divina de que su trono permanecería para siempre, constituyendo la raíz mesiánica."
+                adicional: "Segundo rey de Israel unificado. Venció a Goliat y recibió la promesa dinástica mesiánica."
             },
             "Salomón": {
                 lugar: "Jerusalén",
-                significado: "Del hebreo «שְׁלֹמֹה» (Shlomoh), que significa «pacífico» o «paz».",
+                significado: "Del hebreo «שְׁלֹmֹה» (Shlomoh), que significa «pacífico» o «paz».",
                 cruzada: "1 Crónicas 3 [Cruces: Salomón: 2 Samuel 12:24; 1 Reyes 1-11; Mateo 1; 2 Crónicas 1-9]",
-                adicional: "Hijo de David y Betsabé. Famoso por su inmensa sabiduría y por edificar el Primer Templo de Jerusalén. Al final de sus días cayó en la idolatría."
+                adicional: "Hijo de David y Betsabé. Famoso por su inmensa sabiduría y por edificar el Primer Templo de Jerusalén."
             }
         };
 
@@ -605,20 +891,25 @@
                     if (fatherName) child.father = fatherName;
                     if (motherName) child.mother = motherName;
                     child.gender = row["Género Hijos"] || "M";
-                    child.birthPlace = row["Lugar de nacimiento"] || "";
-                    child.notes = row["Información Adicional"] || row["Notas"] || "";
+                    const rawPlace = row["Lugar de nacimiento"] || "";
+                    child.birthPlace = rawPlace.replace(/\s*\(padre\)\s*/i, "").trim();
+
+                    const fullInfo = row["Información Adicional"] || row["Notas"] || "";
+                    const childMatch = fullInfo.match(/Sobre (?:el hijo|la hija) \([^)]+\):\s*(.+?)(?:\s*\|\s*Sobre (?:el padre|la madre)|$)/i);
+                    child.notes = childMatch ? childMatch[1].trim() : fullInfo;
                     child.reference = row["Referencia"] || "";
-                    if (row["Imagen_URL"])      child.imageUrl      = row["Imagen_URL"].trim();
-                    if (row["Referencias_URLs"]) child.refsUrls      = row["Referencias_URLs"].trim();
-                    if (row["Enlace_Externo"])  child.externalLink  = row["Enlace_Externo"].trim();
+                    if (row["Imagen_URL"])       child.imageUrl     = row["Imagen_URL"].trim();
+                    if (row["Referencias_URLs"]) child.refsUrls     = row["Referencias_URLs"].trim();
+                    if (row["Enlace_Externo"])   child.externalLink = row["Enlace_Externo"].trim();
                 }
                 if (father && childName) {
-                    father.children.push({ name:childName, gender:row["Género Hijos"]||"M", birthPlace:row["Lugar de nacimiento"]||"" });
+                    father.children.push({ name:childName, gender:row["Género Hijos"]||"M", birthPlace:(row["Lugar de nacimiento"]||"").replace(/\s*\(padre\)\s*/i,"").trim() });
                     if (motherName) { father.spouses.add(motherName); mother.spouses.add(fatherName); }
                 }
                 if (mother && childName) mother.children.push({ name:childName, gender:row["Género Hijos"]||"M", birthPlace:row["Lugar de nacimiento"]||"" });
                 if (fatherName && row["Significado del Nombre (Padre)"]) father.meaning = row["Significado del Nombre (Padre)"];
             });
+
             Object.keys(localPatriarchDetails).forEach(name => {
                 const local = localPatriarchDetails[name], p = getOrCreate(name);
                 if (!p) return;
@@ -629,10 +920,68 @@
             });
         }
 
-        function dotColor(name) {
-            let h = 0;
-            for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
-            return `hsl(${Math.abs(h % 360)}, 60%, 52%)`;
+        // BFS to find generation steps from Adam
+        const generationCache = {};
+        function getGeneration(name) {
+            if (generationCache[name] !== undefined) return generationCache[name];
+            if (name.toLowerCase() === "adam") return 0;
+            
+            const queue = [[name, 0]];
+            const visited = new Set([name]);
+            
+            while (queue.length > 0) {
+                const [currName, depth] = queue.shift();
+                const curr = people[currName];
+                if (!curr) continue;
+                
+                if (curr.father) {
+                    if (curr.father.toLowerCase() === "adam") {
+                        generationCache[name] = depth + 1;
+                        return depth + 1;
+                    }
+                    if (!visited.has(curr.father)) {
+                        visited.add(curr.father);
+                        queue.push([curr.father, depth + 1]);
+                    }
+                }
+                if (curr.mother) {
+                    if (curr.mother.toLowerCase() === "adam") {
+                        generationCache[name] = depth + 1;
+                        return depth + 1;
+                    }
+                    if (!visited.has(curr.mother)) {
+                        visited.add(curr.mother);
+                        queue.push([curr.mother, depth + 1]);
+                    }
+                }
+            }
+            return "No determinado";
+        }
+
+        // Normalize text by removing diacritics for match
+        function normText(s) {
+            return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        }
+
+        // Simple Levenshtein distance for fuzzy matching
+        function levDistance(a, b) {
+            const matrix = [];
+            for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+            for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+            for (let i = 1; i <= b.length; i++) {
+                for (let j = 1; j <= a.length; j++) {
+                    if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1, // substitution
+                            matrix[i][j - 1] + 1,     // insertion
+                            matrix[i - 1][j] + 1      // deletion
+                        );
+                    }
+                }
+            }
+            return matrix[b.length][a.length];
         }
 
         function avatarGradient(name) {
@@ -664,129 +1013,280 @@
             return path;
         }
 
-        function selectPerson(name) {
+        function belongsToLineage(name, rootLineage) {
+            if (rootLineage === "Todos") return true;
+            const path = getLineagePath(name);
+            return path.includes(rootLineage);
+        }
+
+        // History handling
+        function addToHistory(name) {
+            if (historyIdx === -1 || historyNav[historyIdx] !== name) {
+                historyNav.splice(historyIdx + 1);
+                historyNav.push(name);
+                historyIdx = historyNav.length - 1;
+            }
+            updateHistoryButtons();
+        }
+
+        function updateHistoryButtons() {
+            document.getElementById("btnBack").disabled = historyIdx <= 0;
+            document.getElementById("btnForward").disabled = historyIdx >= historyNav.length - 1;
+        }
+
+        function navigateBack() {
+            if (historyIdx > 0) {
+                historyIdx--;
+                selectPerson(historyNav[historyIdx], false);
+                updateHistoryButtons();
+            }
+        }
+
+        function navigateForward() {
+            if (historyIdx < historyNav.length - 1) {
+                historyIdx++;
+                selectPerson(historyNav[historyIdx], false);
+                updateHistoryButtons();
+            }
+        }
+
+        function selectPerson(name, recordHistory = true) {
+            if (isComparing) {
+                fillComparisonPanel(name);
+                return;
+            }
+
             const p = people[name];
             if (!p) return;
 
-            // Sidebar highlight
+            selectedPersonName = name;
+            if (recordHistory) {
+                addToHistory(name);
+            }
+
+            // Sync URL
+            const url = new URL(window.location);
+            url.searchParams.set("name", name);
+            window.history.pushState({name: name}, "", url);
+
+            // Highlight sidebar
             document.querySelectorAll(".index-item").forEach(el => {
                 el.classList.toggle("active", el.dataset.name === name);
-                if (el.dataset.name === name) el.scrollIntoView({ block:"nearest" });
+                if (el.dataset.name === name) el.scrollIntoView({ block: "nearest" });
             });
 
-            // Show columns
-            document.getElementById("emptyState").style.display = "none";
-            document.getElementById("leftCol").style.display = "flex";
-            document.getElementById("rightCol").style.display = "flex";
+            // Transition Animation
+            const rightCol = document.getElementById("rightCol");
+            const leftCol = document.getElementById("leftCol");
+            const scrollArea = document.getElementById("detailScroll");
+            scrollArea.classList.add("loading-person");
 
-            // Name & meaning
-            document.getElementById("valName").textContent = p.name;
-            document.getElementById("valMeaning").textContent = p.meaning || "Significado del nombre no registrado.";
+            setTimeout(() => {
+                document.getElementById("emptyState").style.display = "none";
+                leftCol.style.display = "flex";
+                rightCol.style.display = "flex";
 
-            // Avatar — uses imageUrl if available, then adam_portrait.png for Adam, else gradient
-            const img = document.getElementById("portraitImg"), ph = document.getElementById("portraitPlaceholder");
-            const portraitSrc = p.imageUrl || (p.name.toLowerCase() === "adam" ? "adam_portrait.png" : "");
-            if (portraitSrc) {
-                img.src = portraitSrc;
-                img.onerror = () => { img.style.display="none"; ph.style.display="flex"; ph.textContent=p.name.charAt(0); ph.style.background=avatarGradient(p.name); };
-                img.style.display = "block"; ph.style.display = "none";
-            } else {
-                img.style.display = "none"; ph.style.display = "flex";
-                ph.textContent = p.name.charAt(0); ph.style.background = avatarGradient(p.name);
-            }
+                // Text properties
+                document.getElementById("valName").textContent = p.name;
+                document.getElementById("valMeaning").textContent = p.meaning || "Significado del nombre no registrado.";
+                document.getElementById("valNotes").textContent = p.notes || "Sin información biográfica registrada.";
 
-            // Meta
-            document.getElementById("valGender").textContent = p.gender === "M" ? "Masculino" : "Femenino";
-            const fEl = document.getElementById("valFather");
-            if (p.father) { fEl.textContent = p.father; fEl.className = "meta-val link"; fEl.onclick = () => selectPerson(p.father); }
-            else { fEl.textContent = "—"; fEl.className = "meta-val"; fEl.onclick = null; }
-            const mEl = document.getElementById("valMother");
-            if (p.mother) { mEl.textContent = p.mother; mEl.className = "meta-val link"; mEl.onclick = () => selectPerson(p.mother); }
-            else { mEl.textContent = "—"; mEl.className = "meta-val"; mEl.onclick = null; }
-            const spouses = p.spouses.size > 0 ? Array.from(p.spouses).join(", ") : (p.name.toLowerCase() === "adam" ? "Eva" : "—");
-            document.getElementById("valSpouse").textContent = spouses;
-            document.getElementById("valBirthPlace").textContent = p.birthPlace || "—";
+                // Generación
+                const gen = getGeneration(p.name);
+                document.getElementById("valGeneration").textContent = typeof gen === "number" ? `${gen}ª desde Adán` : gen;
 
-            // Children
-            const grid = document.getElementById("childrenGrid");
-            grid.innerHTML = "";
-            let children = p.children;
-            if (p.name.toLowerCase() === "adam" && children.length === 0)
-                children = [{name:"Caín",gender:"M",birthPlace:""},{name:"Abel",gender:"M",birthPlace:""},{name:"Set",gender:"M",birthPlace:""}];
-            if (children.length > 0) {
-                children.forEach(c => {
-                    const ch = document.createElement("div");
-                    ch.className = "child-chip";
-                    const color = c.gender.toLowerCase() === "f" ? "var(--f-dot)" : "var(--m-dot)";
-                    const childObj = people[c.name];
-                    const sub = childObj && childObj.children.length > 0 ? `${childObj.children.length} hijos` : (c.birthPlace || "");
-                    ch.innerHTML = `<div class="child-dot" style="background:${color}"></div><div class="child-info"><div class="child-name">${c.name}</div>${sub ? `<div class="child-sub">${sub}</div>` : ""}</div>`;
-                    ch.onclick = () => selectPerson(c.name);
-                    grid.appendChild(ch);
-                });
-            } else {
-                grid.innerHTML = `<span class="no-data">Sin descendientes registrados</span>`;
-            }
-
-            // Notes
-            document.getElementById("valNotes").textContent = p.notes || "Sin información biográfica registrada.";
-
-            // References — uses Referencias_URLs (pipe-separated) to make chips clickable
-            const refsEl = document.getElementById("refsContainer");
-            refsEl.innerHTML = "";
-            const urlList = (p.refsUrls || "").split("|").map(u => u.trim()).filter(Boolean);
-            if (p.reference) {
-                const mainRef = p.reference.split("[")[0].trim();
-                const crucesMatch = p.reference.match(/\[Cruces:\s*(.*)\]/);
-                const allTexts = [mainRef];
-                if (crucesMatch && crucesMatch[1]) {
-                    crucesMatch[1].split(";").forEach(c => {
-                        const clean = c.replace(/^[A-ZÁÉÍÓÚ][a-zñáéíóúü]+:\s*/i, "").trim();
-                        if (clean) allTexts.push(clean);
+                // Spouses and gender
+                document.getElementById("valGender").textContent = p.gender === "M" ? "Masculino" : "Femenino";
+                const spouseVal = document.getElementById("valSpouse");
+                spouseVal.innerHTML = "";
+                const spousesArr = Array.from(p.spouses);
+                if (spousesArr.length > 0) {
+                    spousesArr.forEach((sp, idx) => {
+                        const spSpan = document.createElement("span");
+                        spSpan.textContent = sp;
+                        if (people[sp]) {
+                            spSpan.className = "link";
+                            spSpan.onclick = () => selectPerson(sp);
+                        }
+                        spouseVal.appendChild(spSpan);
+                        if (idx < spousesArr.length - 1) spouseVal.appendChild(document.createTextNode(", "));
                     });
+                } else {
+                    spouseVal.textContent = p.name.toLowerCase() === "adam" ? "Eva" : "—";
+                    if (p.name.toLowerCase() === "adam") {
+                        spouseVal.className = "link";
+                        spouseVal.onclick = () => selectPerson("Eva");
+                    }
                 }
-                allTexts.forEach((ref, idx) => {
-                    const explicitUrl = urlList[idx] || null;
-                    const autoUrl = getBibleUrl(ref);
-                    const url = explicitUrl || autoUrl;
-                    const el = document.createElement(url ? "a" : "span");
-                    el.className = "ref-chip" + (url ? " link" : "");
-                    if (url) { el.href = url; el.target = "_blank"; el.rel = "noopener noreferrer"; }
-                    el.innerHTML = url
-                        ? `<svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>${ref}`
-                        : ref;
-                    refsEl.appendChild(el);
-                });
-            } else {
-                refsEl.innerHTML = `<span class="no-data">Sin referencias registradas</span>`;
-            }
 
-            // External link (Enlace_Externo column)
-            const extLinkRow = document.getElementById("extLinkRow");
-            const extLinkEl  = document.getElementById("extLinkBtn");
-            if (extLinkRow && extLinkEl) {
+                // Mother and Father Clickable
+                const fEl = document.getElementById("valFather");
+                if (p.father) { fEl.textContent = p.father; fEl.className = "meta-val link"; fEl.onclick = () => selectPerson(p.father); }
+                else { fEl.textContent = "—"; fEl.className = "meta-val"; fEl.onclick = null; }
+
+                const mEl = document.getElementById("valMother");
+                if (p.mother) { mEl.textContent = p.mother; mEl.className = "meta-val link"; mEl.onclick = () => selectPerson(p.mother); }
+                else { mEl.textContent = "—"; mEl.className = "meta-val"; mEl.onclick = null; }
+
+                document.getElementById("valBirthPlace").textContent = p.birthPlace || "—";
+
+                // Portrait URL
+                const img = document.getElementById("portraitImg"), ph = document.getElementById("portraitPlaceholder");
+                const portraitSrc = p.imageUrl || (p.name.toLowerCase() === "adam" ? "adam_portrait.png" : "");
+                if (portraitSrc) {
+                    img.src = portraitSrc;
+                    img.onerror = () => { img.style.display="none"; ph.style.display="flex"; ph.textContent=p.name.charAt(0); ph.style.background=avatarGradient(p.name); };
+                    img.style.display = "block"; ph.style.display = "none";
+                } else {
+                    img.style.display = "none"; ph.style.display = "flex";
+                    ph.textContent = p.name.charAt(0); ph.style.background = avatarGradient(p.name);
+                }
+
+                // Children Section
+                const grid = document.getElementById("childrenGrid");
+                grid.innerHTML = "";
+                let children = p.children;
+                if (p.name.toLowerCase() === "adam" && children.length === 0)
+                    children = [{name:"Caín",gender:"M",birthPlace:""},{name:"Abel",gender:"M",birthPlace:""},{name:"Set",gender:"M",birthPlace:""}];
+                if (children.length > 0) {
+                    children.forEach(c => {
+                        const ch = document.createElement("div");
+                        ch.className = "child-chip";
+                        const color = c.gender.toLowerCase() === "f" ? "var(--f-dot)" : "var(--m-dot)";
+                        const childObj = people[c.name];
+                        const sub = childObj && childObj.children.length > 0 ? `${childObj.children.length} hijos` : (c.birthPlace || "");
+                        ch.innerHTML = `<div class="child-dot" style="background:${color}"></div><div class="child-info"><div class="child-name">${c.name}</div>${sub ? `<div class="child-sub">${sub}</div>` : ""}</div>`;
+                        ch.onclick = () => selectPerson(c.name);
+                        grid.appendChild(ch);
+                    });
+                } else {
+                    grid.innerHTML = `<span class="no-data">Sin descendientes registrados</span>`;
+                }
+
+                // Siblings Section
+                const sibSection = document.getElementById("siblingsSection");
+                const sibGrid = document.getElementById("siblingsGrid");
+                sibGrid.innerHTML = "";
+                if (p.father && people[p.father]) {
+                    const sibs = people[p.father].children.filter(c => c.name !== p.name);
+                    if (sibs.length > 0) {
+                        sibSection.style.display = "block";
+                        sibs.forEach(s => {
+                            const sh = document.createElement("div");
+                            sh.className = "child-chip";
+                            const color = s.gender.toLowerCase() === "f" ? "var(--f-dot)" : "var(--m-dot)";
+                            sh.innerHTML = `<div class="child-dot" style="background:${color}"></div><div class="child-info"><div class="child-name">${s.name}</div></div>`;
+                            sh.onclick = () => selectPerson(s.name);
+                            sibGrid.appendChild(sh);
+                        });
+                    } else {
+                        sibSection.style.display = "none";
+                    }
+                } else {
+                    sibSection.style.display = "none";
+                }
+
+                // References & crosses links
+                const refsEl = document.getElementById("refsContainer");
+                refsEl.innerHTML = "";
+                const urlList = (p.refsUrls || "").split("|").map(u => u.trim()).filter(Boolean);
+                if (p.reference) {
+                    const mainRef = p.reference.split("[")[0].trim();
+                    const crucesMatch = p.reference.match(/\[Cruces:\s*(.*)\]/);
+                    const allTexts = [mainRef];
+                    if (crucesMatch && crucesMatch[1]) {
+                        crucesMatch[1].split(";").forEach(c => {
+                            const clean = c.replace(/^[A-ZÁÉÍÓÚ][a-zñáéíóúü]+:\s*/i, "").trim();
+                            if (clean) allTexts.push(clean);
+                        });
+                    }
+                    allTexts.forEach((ref, idx) => {
+                        const explicitUrl = urlList[idx] || null;
+                        const autoUrl = getBibleUrl(ref);
+                        const url = explicitUrl || autoUrl;
+                        const el = document.createElement(url ? "a" : "span");
+                        el.className = "ref-chip" + (url ? " link" : "");
+                        if (url) { el.href = url; el.target = "_blank"; el.rel = "noopener noreferrer"; }
+                        el.innerHTML = url
+                            ? `<svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>${ref}`
+                            : ref;
+                        refsEl.appendChild(el);
+                    });
+                } else {
+                    refsEl.innerHTML = `<span class="no-data">Sin referencias registradas</span>`;
+                }
+
+                // External links row
+                const extLinkRow = document.getElementById("extLinkRow");
+                const extLinkEl  = document.getElementById("extLinkBtn");
                 if (p.externalLink) { extLinkEl.href = p.externalLink; extLinkRow.style.display = "flex"; }
                 else extLinkRow.style.display = "none";
-            }
 
-            // Breadcrumb
-            const bc = document.getElementById("breadcrumb");
-            bc.innerHTML = "";
-            const trail = getLineagePath(p.name);
-            trail.forEach((n, i) => {
-                const node = document.createElement("span");
-                node.className = "bc-node"; node.textContent = n; node.onclick = () => selectPerson(n);
-                bc.appendChild(node);
-                if (i < trail.length - 1) { const sep = document.createElement("span"); sep.className = "bc-sep"; sep.textContent = "›"; bc.appendChild(sep); }
-            });
+                // Breadcrumb path builder
+                const bc = document.getElementById("breadcrumb");
+                bc.innerHTML = "";
+                const trail = getLineagePath(p.name);
+                trail.forEach((n, i) => {
+                    const node = document.createElement("span");
+                    node.className = "bc-node"; node.textContent = n; node.onclick = () => selectPerson(n);
+                    bc.appendChild(node);
+                    if (i < trail.length - 1) {
+                        const sep = document.createElement("span");
+                        sep.className = "bc-sep"; sep.textContent = "›";
+                        bc.appendChild(sep);
+                    }
+                });
 
-            // Tree button
-            const treeBtn = document.getElementById("viewInTreeBtn");
-            if (treeBtn) {
-                const root = trail.length > 0 ? trail[0] : "Adam";
-                treeBtn.href = `arbol_genealogico.html?root=${encodeURIComponent(root)}&highlight=${encodeURIComponent(p.name)}`;
-                treeBtn.style.display = "flex";
-            }
+                // Tree visual link button
+                const treeBtn = document.getElementById("viewInTreeBtn");
+                if (treeBtn) {
+                    const root = trail.length > 0 ? trail[0] : "Adam";
+                    treeBtn.href = `arbol_genealogico.html?root=${encodeURIComponent(root)}&highlight=${encodeURIComponent(p.name)}`;
+                    treeBtn.style.display = "flex";
+                }
+
+                // Timeline point setup
+                const tmContainer = document.getElementById("timelineContainer");
+                const track = document.getElementById("timelineTrack");
+                track.innerHTML = "";
+                const keyLineages = ["Adam", "Noé", "Abraham", "Israel", "David"];
+                const activePath = getLineagePath(p.name);
+
+                tmContainer.style.display = "block";
+                keyLineages.forEach((lin, idx) => {
+                    const pt = document.createElement("div");
+                    pt.className = "timeline-point" + (activePath.includes(lin) || p.name === lin ? " active" : "");
+                    pt.style.left = `${(idx / (keyLineages.length - 1)) * 100}%`;
+                    pt.title = lin;
+                    pt.onclick = () => selectPerson(lin);
+                    track.appendChild(pt);
+                });
+
+                scrollArea.classList.remove("loading-person");
+            }, 100);
+        }
+
+        // Split Comparison Panel Logic
+        function fillComparisonPanel(name) {
+            const p = people[name];
+            if (!p) return;
+
+            document.getElementById("compName").textContent = p.name;
+            document.getElementById("compMeaning").textContent = p.meaning || "Significado del nombre no registrado.";
+            document.getElementById("compNotes").textContent = p.notes || "Sin información biográfica registrada.";
+            
+            const gen = getGeneration(p.name);
+            document.getElementById("compGeneration").textContent = typeof gen === "number" ? `${gen}ª desde Adán` : gen;
+            document.getElementById("compGender").textContent = p.gender === "M" ? "Masculino" : "Femenino";
+            document.getElementById("compFather").textContent = p.father || "—";
+            document.getElementById("compMother").textContent = p.mother || "—";
+
+            const spouses = p.spouses.size > 0 ? Array.from(p.spouses).join(", ") : (p.name.toLowerCase() === "adam" ? "Eva" : "—");
+            document.getElementById("compSpouse").textContent = spouses;
+
+            const ph = document.getElementById("compPortraitPlaceholder");
+            ph.textContent = p.name.charAt(0);
+            ph.style.background = avatarGradient(p.name);
         }
 
         function setupIndexList() {
@@ -794,6 +1294,8 @@
             list.innerHTML = "";
             Object.keys(people).sort().forEach(name => {
                 const p = people[name];
+                if (!belongsToLineage(name, filterLineage)) return;
+
                 const item = document.createElement("div");
                 item.className = "index-item"; item.dataset.name = name;
                 item.onclick = () => selectPerson(name);
@@ -804,11 +1306,23 @@
             });
         }
 
+        // Fuzzy + Accent Normalized Search
         function setupSearch() {
             document.getElementById("searchInput").addEventListener("input", e => {
-                const q = e.target.value.toLowerCase();
+                const q = normText(e.target.value);
+                
                 document.querySelectorAll(".index-item").forEach(el => {
-                    el.style.display = el.dataset.name.toLowerCase().includes(q) ? "flex" : "none";
+                    const nameNorm = normText(el.dataset.name);
+                    
+                    let match = nameNorm.includes(q);
+                    
+                    // Fuzzy match (tolerate distance <= 2 for searches > 3 chars)
+                    if (!match && q.length > 3) {
+                        const dist = levDistance(nameNorm.substring(0, q.length), q);
+                        if (dist <= 1) match = true;
+                    }
+
+                    el.style.display = match ? "flex" : "none";
                 });
             });
         }
@@ -836,11 +1350,97 @@
             });
         }
 
+        // Mobile responsiveness menu logic
+        function setupMobileNav() {
+            const toggle = document.getElementById("menuToggle");
+            const sidebar = document.getElementById("sidebar");
+            toggle.addEventListener("click", (e) => {
+                sidebar.classList.toggle("open");
+                e.stopPropagation();
+            });
+            document.addEventListener("click", (e) => {
+                if (!sidebar.contains(e.target) && e.target !== toggle) {
+                    sidebar.classList.remove("open");
+                }
+            });
+        }
+
+        // Share button action
+        function setupSharing() {
+            const btn = document.getElementById("btnCompartir");
+            const tooltip = document.getElementById("copiedTooltip");
+            btn.addEventListener("click", (e) => {
+                const text = window.location.href;
+                navigator.clipboard.writeText(text).then(() => {
+                    const rect = btn.getBoundingClientRect();
+                    tooltip.style.left = `${rect.left + (rect.width/2) - (tooltip.clientWidth/2)}px`;
+                    tooltip.style.top = `${rect.top - 32}px`;
+                    tooltip.classList.add("visible");
+                    setTimeout(() => tooltip.classList.remove("visible"), 2000);
+                });
+            });
+        }
+
+        // Lineage Filter Action
+        function setupLineageFilter() {
+            document.querySelectorAll(".pill-btn").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    document.querySelectorAll(".pill-btn").forEach(b => b.classList.remove("active"));
+                    btn.classList.add("active");
+                    filterLineage = btn.dataset.linaje;
+                    setupIndexList();
+                });
+            });
+        }
+
+        // Comparison mode setup
+        function setupComparison() {
+            const btn = document.getElementById("btnComparar");
+            const panel = document.getElementById("comparisonPanel");
+            const closeBtn = document.getElementById("btnCloseComparison");
+
+            btn.addEventListener("click", () => {
+                isComparing = !isComparing;
+                if (isComparing) {
+                    panel.style.display = "flex";
+                    btn.textContent = "Modo navegación";
+                    btn.classList.add("active");
+                    // Fill right panel with Adam as default compare item
+                    fillComparisonPanel(selectedPersonName || "Adam");
+                } else {
+                    panel.style.display = "none";
+                    btn.textContent = "Comparar ficha";
+                    btn.classList.remove("active");
+                }
+            });
+
+            closeBtn.addEventListener("click", () => {
+                isComparing = false;
+                panel.style.display = "none";
+                btn.textContent = "Comparar ficha";
+                btn.classList.remove("active");
+            });
+        }
+
         window.addEventListener("DOMContentLoaded", () => {
             buildRelationshipMap();
             setupIndexList();
             setupSearch();
             setupTheme();
+            setupMobileNav();
+            setupSharing();
+            setupComparison();
+            setupLineageFilter();
+
+            document.getElementById("btnBack").addEventListener("click", navigateBack);
+            document.getElementById("btnForward").addEventListener("click", navigateForward);
+
+            // Hide overlay spinner
+            const overlay = document.getElementById("loadingOverlay");
+            overlay.style.opacity = "0";
+            setTimeout(() => overlay.style.display = "none", 300);
+
+            // Initial person select from URL
             const params = new URLSearchParams(window.location.search);
             const nameParam = params.get("name");
             if (nameParam && people[nameParam]) selectPerson(nameParam);
