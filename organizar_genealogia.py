@@ -249,13 +249,27 @@ patriarch_data = {
 def clean_name(name):
     if not name:
         return ""
+    
+    # Specific known fixes
+    name_clean = name.strip()
+    name_lower = name_clean.lower()
+    if name_lower.startswith("david que le"):
+        return "David"
+    if name_lower.startswith("aarón son estos") or name_lower.startswith("aaron son estos"):
+        return "Aarón"
+        
     # Remove leading articles or prepositions
-    name = re.sub(r'^(y|el|la|los|las|de|ben|hijo de|hijos de|hija de|a|al|del)\s+', '', name, flags=re.IGNORECASE)
+    name_clean = re.sub(r'^(y|el|la|los|las|de|ben|hijo de|hijos de|hija de|a|al|del)\s+', '', name_clean, flags=re.IGNORECASE)
     # Remove trailing descriptors
-    name = re.sub(r'\s+(ben|hijo|hijos|padre|madre|su\s+hermana|hermana|primogénito|segundo|tercero|cuarto|quinto|sexto|séptimo|octavo|noveno|décimo|su\s+mujer|mujer|concubina|su\s+nuera|nuera)\b.*', '', name, flags=re.IGNORECASE)
+    name_clean = re.sub(r'\s+(ben|hijo|hijos|padre|madre|su\s+hermana|hermana|primogénito|segundo|tercero|cuarto|quinto|sexto|séptimo|octavo|noveno|décimo|su\s+mujer|mujer|concubina|su\s+nuera|nuera)\b.*', '', name_clean, flags=re.IGNORECASE)
+    
+    # Remove descriptive clauses
+    name_clean = re.sub(r'\s+que\s+le\s+nacieron.*', '', name_clean, flags=re.IGNORECASE)
+    name_clean = re.sub(r'\s+son\s+estos.*', '', name_clean, flags=re.IGNORECASE)
+    
     # Clean whitespace and symbols (including stray semicolons)
-    name = name.strip(",.; \t\n()\"'")
-    return name
+    name_clean = name_clean.strip(",.; \t\n()\"'")
+    return name_clean
 
 def get_gender(name, context_text=""):
     context_text = context_text.lower()

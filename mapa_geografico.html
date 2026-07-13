@@ -19,33 +19,41 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
     
     <style>
-        /* ── Design tokens ────────────────────────────────────── */
+        /* ── Neo-Skeuo Design tokens ──────────────────────────── */
         :root {
-            --bg:        #f5f4f2;
-            --surface:   #ffffff;
-            --border:    #e4e2dc;
-            --text:      #1a1916;
-            --muted:     #7a7870;
-            --subtle:    #b0ada6;
-            --accent:    #1a56db;
-            --accent-bg: #eef3ff;
-            --m-dot:     #3b82f6;
-            --f-dot:     #e879a0;
-            --radius-sm: 8px;
-            --radius-md: 14px;
-            --radius-lg: 20px;
+            --bg:             #faf6f0; /* Tono gris amarronado lavado extra suave */
+            --surface:        #f4f0e8; /* Base de ficha */
+            --surface-raised: #f7f6f2; /* Elemento elevado */
+            --surface-inset:  #dedad0; /* Superficie hundida */
+            --border:         #1a1917; /* Negro tinta lavada */
+            --border-subtle:  #7a7870;
+            --text:           #1a1917;
+            --muted:          #5a5850;
+            --subtle:         #8a8880;
+            --accent:         #1a1917;
+            --accent-bg:      #dedad0;
+            --m-dot:          #3b82f6;
+            --f-dot:          #e879a0;
+            --radius-sm:      0px;
+            --radius-md:      4px;
+            --radius-lg:      8px;
+            --shadow-block:   3px 3px 0px var(--border);
         }
         [data-theme="dark"] {
-            --bg:        #111110;
-            --surface:   #1c1b19;
-            --border:    #2e2c28;
-            --text:      #f0ede8;
-            --muted:     #888580;
-            --subtle:    #5a5753;
-            --accent:    #5b8def;
-            --accent-bg: #1a2340;
-            --m-dot:     #60a5fa;
-            --f-dot:     #f472b6;
+            --bg:             #403d39; /* Gris pizarra oscuro lavado */
+            --surface:        #32302d;
+            --surface-raised: #47423b;
+            --surface-inset:  #242321;
+            --border:         #faf6f0; /* Tinta blanca lavada */
+            --border-subtle:  #8a8880;
+            --text:           #faf6f0;
+            --muted:          #b0ada6;
+            --subtle:         #6a6860;
+            --accent:         #faf6f0;
+            --accent-bg:      #242321;
+            --m-dot:          #60a5fa;
+            --f-dot:          #f472b6;
+            --shadow-block:   3px 3px 0px var(--border);
         }
 
         /* ── Reset ────────────────────────────────────────────── */
@@ -53,7 +61,7 @@
         html { height: 100%; }
         body {
             font-family: 'Inter', system-ui, sans-serif;
-            font-size: 14px;
+            font-size: 13.5px;
             line-height: 1.5;
             background: var(--bg);
             color: var(--text);
@@ -61,6 +69,18 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            position: relative;
+        }
+
+        /* Technical Grid */
+        .dotted-grid {
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(var(--border-subtle) 1px, transparent 1px);
+            background-size: 20px 20px;
+            opacity: 0.08;
+            pointer-events: none;
+            z-index: 1;
         }
 
         /* Spinner */
@@ -72,8 +92,8 @@
         }
         .spinner {
             width: 36px; height: 36px;
-            border: 3px solid var(--border); border-top-color: var(--accent);
-            border-radius: 50%; animation: spin .8s linear infinite;
+            border: 2px solid var(--border); border-top-color: var(--border-subtle);
+            animation: spin .8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -86,38 +106,28 @@
             gap: 12px;
             padding: 0 20px;
             background: var(--surface);
-            border-bottom: 1px solid var(--border);
+            border-bottom: 2px solid var(--border);
             flex-shrink: 0;
             z-index: 10;
         }
         .topbar-brand {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text);
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            font-size: 13px; font-weight: 700; color: var(--text);
+            display: flex; align-items: center; gap: 8px;
+            text-transform: uppercase;
         }
-        .topbar-brand-dot {
-            width: 7px; height: 7px;
-            background: var(--accent);
-            border-radius: 50%;
-        }
+        .topbar-brand-dot { width: 8px; height: 8px; background: var(--text); border: 1px solid var(--bg); border-radius: 50%; }
         .topbar-sep { flex: 1; }
         .topbar-btn {
             display: flex; align-items: center; gap: 5px;
-            padding: 5px 11px;
-            font-size: 12px; font-weight: 500;
-            color: var(--muted);
-            background: transparent;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            text-decoration: none;
-            font-family: inherit;
+            padding: 5px 11px; font-size: 12px; font-weight: 600;
+            color: var(--text); background: var(--surface-raised);
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+            cursor: pointer; text-decoration: none; font-family: inherit;
+            box-shadow: 2px 2px 0px var(--border);
+            transition: transform 0.1s, box-shadow 0.1s;
         }
-        .topbar-btn:hover { border-color: var(--accent); color: var(--accent); }
-        .topbar-btn svg { width: 13px; height: 13px; fill: currentColor; flex-shrink: 0; }
+        .topbar-btn:active, .topbar-btn.active { transform: translate(2px, 2px); box-shadow: none; }
+        .topbar-btn svg { width: 13px; height: 13px; fill: currentColor; }
 
         /* ── Workspace layout ─────────────────────────────────── */
         .workspace {
@@ -125,6 +135,7 @@
             display: flex;
             overflow: hidden;
             position: relative;
+            z-index: 5;
         }
 
         /* ── Sidebar ──────────────────────────────────────────── */
@@ -132,7 +143,7 @@
             width: 260px;
             flex-shrink: 0;
             background: var(--surface);
-            border-right: 1px solid var(--border);
+            border-right: 2px solid var(--border);
             overflow-y: auto;
             padding: 16px;
             display: flex;
@@ -141,12 +152,12 @@
             z-index: 5;
         }
         .section-label {
-            font-size: 11px;
+            font-size: 10.5px;
             font-weight: 700;
-            letter-spacing: .6px;
+            letter-spacing: .5px;
             text-transform: uppercase;
             color: var(--subtle);
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         
         .filter-group {
@@ -160,32 +171,32 @@
             gap: 4px;
         }
         .pill {
-            padding: 4px 10px;
-            font-size: 11px; font-weight: 500;
-            color: var(--muted);
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            cursor: pointer;
-            white-space: nowrap;
+            padding: 4px 10px; font-size: 11px; font-weight: 600;
+            color: var(--text); background: var(--surface-raised);
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+            cursor: pointer; white-space: nowrap;
+            box-shadow: 1.5px 1.5px 0px var(--border);
         }
         .pill.active {
-            border-color: var(--accent);
-            color: var(--accent);
-            background: var(--accent-bg);
+            border-color: var(--border);
+            color: var(--text);
+            background: var(--surface-inset);
+            box-shadow: none;
+            transform: translate(1.5px, 1.5px);
         }
 
         .stats-box {
             padding: 10px 14px;
             border: 1px solid var(--border);
-            background: var(--bg);
+            background: var(--surface-inset);
             border-radius: var(--radius-sm);
             font-size: 12.5px;
-            color: var(--muted);
+            color: var(--text);
+            box-shadow: inset 1.5px 1.5px 0px rgba(0,0,0,0.05);
+            font-weight: 600;
         }
         .stats-count {
-            font-weight: 700;
-            color: var(--text);
+            font-weight: 800;
         }
 
         /* Legend */
@@ -198,10 +209,10 @@
             margin-bottom: 4px;
         }
         .legend-dot {
-            width: 10px; height: 10px;
+            width: 11px; height: 11px;
             border-radius: 50%;
-            border: 1.5px solid white;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+            border: 2px solid var(--border);
+            box-shadow: 1px 1px 0px rgba(0,0,0,0.15);
         }
 
         /* ── Map Container ────────────────────────────────────── */
@@ -214,16 +225,16 @@
             height: 100%;
         }
 
-        /* Info Popup / Overlay Panel */
+        /* Info Popup / Overlay Panel (Double border Neo-Skeuo) */
         .info-panel {
             position: absolute;
             bottom: 20px;
             right: 20px;
             width: 320px;
             background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            box-shadow: 0 4px 18px rgba(0,0,0,0.12);
+            border: 3px double var(--border);
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-block);
             padding: 16px;
             display: none;
             z-index: 1000;
@@ -236,21 +247,20 @@
             align-items: center;
         }
         .info-avatar {
-            width: 48px;
-            height: 48px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            font-weight: 700;
+            width: 48px; height: 48px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; font-weight: 800;
             color: rgba(255,255,255,0.9);
+            text-shadow: 1px 1px 0px var(--border);
             flex-shrink: 0;
         }
         .info-title {
-            font-size: 16px;
-            font-weight: 700;
+            font-size: 15px;
+            font-weight: 800;
             color: var(--text);
+            text-transform: uppercase;
         }
         .info-meta-row {
             display: flex;
@@ -259,16 +269,19 @@
         }
         .info-key {
             color: var(--subtle);
-            font-weight: 600;
+            font-weight: 700;
             min-width: 60px;
+            text-transform: uppercase;
+            font-size: 10.5px;
         }
         .info-val {
             color: var(--text);
+            font-weight: 600;
         }
         .info-notes {
             font-size: 12px;
             color: var(--muted);
-            border-top: 1px solid var(--border);
+            border-top: 1px dashed var(--border-subtle);
             padding-top: 8px;
             line-height: 1.5;
             max-height: 100px;
@@ -279,39 +292,58 @@
             align-items: center;
             justify-content: center;
             padding: 6px 12px;
-            background: var(--accent-bg);
-            color: var(--accent);
-            border: 1px solid var(--accent);
+            background: var(--surface-raised);
+            color: var(--text);
+            border: 1px solid var(--border);
             border-radius: var(--radius-sm);
-            font-size: 12px;
-            font-weight: 600;
+            font-size: 11.5px;
+            font-weight: 700;
             text-decoration: none;
             text-align: center;
+            text-transform: uppercase;
+            box-shadow: 2px 2px 0px var(--border);
         }
+        .info-btn:active { transform: translate(1.5px, 1.5px); box-shadow: none; }
+
+        /* Custom Leaflet overrides for skeuo */
+        .leaflet-bar {
+            border: 2px solid var(--border) !important;
+            box-shadow: 3px 3px 0px var(--border) !important;
+            border-radius: var(--radius-sm) !important;
+        }
+        .leaflet-bar a {
+            background-color: var(--surface-raised) !important;
+            color: var(--text) !important;
+            border-bottom: 1px solid var(--border) !important;
+        }
+        .leaflet-bar a:last-child { border-bottom: none !important; }
 
         /* ── Responsive / Mobile ──────────────────────────────── */
         @media (max-width: 640px) {
             .workspace { flex-direction: column; }
-            .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+            .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 2px solid var(--border); }
             .info-panel { width: calc(100% - 40px); left: 20px; }
         }
     </style>
 </head>
 <body>
 
+    <!-- Dotted Technical Grid -->
+    <div class="dotted-grid"></div>
+
     <!-- Loading Spinner Overlay -->
     <div id="loadingOverlay">
         <div class="spinner"></div>
-        <span style="font-size:13px;color:var(--muted);font-weight:500">Cargando mapa geográfico...</span>
+        <span style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;">[Procesando Mapa Cartográfico]</span>
     </div>
 
     <!-- Top bar -->
     <header class="topbar">
         <div class="topbar-brand">
             <div class="topbar-brand-dot"></div>
-            Genealogía Bíblica
+            Mapa Geográfico
         </div>
-        <span style="font-size:11px;color:var(--subtle)">Mapa Geográfico</span>
+        <span style="font-size:11px;color:var(--subtle);font-family:monospace;">[leaflet_cartography]</span>
         <div class="topbar-sep"></div>
         
         <a href="index.html" class="topbar-btn">Inicio</a>
@@ -372,7 +404,7 @@
                 </div>
             </div>
             
-            <p style="font-size:11px; color:var(--subtle); line-height:1.4;">
+            <p style="font-size:11px; color:var(--subtle); line-height:1.4; border-top:1px dashed var(--border-subtle); padding-top:8px;">
                 Los marcadores agrupan personajes por lugar de nacimiento registrado en la base de datos de 1 Crónicas.
             </p>
         </aside>
@@ -391,7 +423,6 @@
     <script>
         const people = {};
         
-        // Coordenadas aproximadas para los lugares geográficos bíblicos
         const PLACE_COORDS = {
             "Edén": [37.5, 42.5],
             "Jardín del Edén": [37.5, 42.5],
@@ -446,9 +477,8 @@
             if (typeof GENEALOGIA_DATA === 'undefined') return;
             function getOrCreate(name) {
                 if (!name) return null;
-                const n = name.trim();
-                if (!n) return null;
-                if (!people[n]) people[n] = { name:n, gender:"M", father:"", mother:"", birthPlace:"", spouses:new Set(), children:[], notes:"", reference:"", meaning:"", imageUrl:"", refsUrls:"", externalLink:"" };
+                const n = name.trim(); if (!n) return null;
+                if (!people[n]) people[n] = { name:n, gender:"M", father:"", mother:"", birthPlace:"", spouses:new Set(), children:[], notes:"", reference:"", meaning:"" };
                 return people[n];
             }
             GENEALOGIA_DATA.forEach(row => {
@@ -481,7 +511,6 @@
         function findCoords(place) {
             if (!place) return null;
             if (PLACE_COORDS[place]) return PLACE_COORDS[place];
-            // Lookup substring match
             const pl = place.toLowerCase();
             for (const [k, v] of Object.entries(PLACE_COORDS)) {
                 if (pl.includes(k.toLowerCase()) || k.toLowerCase().includes(pl)) return v;
@@ -503,8 +532,7 @@
 
         function belongsToLineage(name, rootLineage) {
             if (rootLineage === "Todos") return true;
-            const path = getLineagePath(name);
-            return path.includes(rootLineage);
+            return getLineagePath(name).includes(rootLineage);
         }
 
         function avatarGradient(name) {
@@ -514,13 +542,12 @@
             return `linear-gradient(135deg, hsl(${h1},65%,48%) 0%, hsl(${h2},65%,38%) 100%)`;
         }
 
-        // Leaflet logic
         let map, markersGroup, lightTile, darkTile;
         let selectedLineage = "Todos";
         let selectedGender = "Todos";
 
         function initMap() {
-            map = L.map('map', { center: [32, 38], zoom: 5 });
+            map = L.map('map', { center: [32.3, 38], zoom: 5 });
             
             lightTile = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors',
@@ -541,7 +568,7 @@
             const color = gender === "F" ? "var(--f-dot)" : "var(--m-dot)";
             return L.divIcon({
                 className: '',
-                html: `<div style="width:14px; height:14px; background:${color}; border:2.5px solid white; border-radius:50%; box-shadow:0 1.5px 5px rgba(0,0,0,0.3)"></div>`,
+                html: `<div style="width:14px; height:14px; background:${color}; border:2px solid var(--border); border-radius:50%; box-shadow:1.5px 1.5px 0px var(--border);"></div>`,
                 iconSize: [14, 14],
                 iconAnchor: [7, 7]
             });
@@ -624,7 +651,6 @@
             populateMarkers();
             setupTheme();
 
-            // Hide loader
             const overlay = document.getElementById("loadingOverlay");
             overlay.style.opacity = "0";
             setTimeout(() => overlay.style.display = "none", 300);

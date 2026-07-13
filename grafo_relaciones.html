@@ -4,50 +4,57 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Genealogía Bíblica · Grafo de Relaciones</title>
-    <meta name="description" content="Grafo de red de fuerza interactivo para explorar las relaciones genealógicas bíblicas de 1 Crónicas.">
+    <meta name="description" content="Visualización topológica interactiva con grafo de red de fuerza D3.js para la genealogía bíblica.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- D3.js v7 -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
     <style>
-        /* ── Design tokens ────────────────────────────────────── */
+        /* ── Neo-Skeuo Design tokens ──────────────────────────── */
         :root {
-            --bg:        #f5f4f2;
-            --surface:   #ffffff;
-            --border:    #e4e2dc;
-            --text:      #1a1916;
-            --muted:     #7a7870;
-            --subtle:    #b0ada6;
-            --accent:    #1a56db;
-            --accent-bg: #eef3ff;
-            --m-dot:     #3b82f6;
-            --f-dot:     #e879a0;
-            --radius-sm: 8px;
-            --radius-md: 14px;
-            --radius-lg: 20px;
-            --marriage-color: #f97316;
-            --link-color: rgba(150,145,138,0.45);
+            --bg:             #faf6f0; /* Tono gris amarronado lavado extra suave */
+            --surface:        #f4f0e8; /* Base de ficha */
+            --surface-raised: #f7f6f2; /* Elemento elevado */
+            --surface-inset:  #dedad0; /* Superficie hundida */
+            --border:         #1a1917; /* Negro tinta lavada */
+            --border-subtle:  #7a7870;
+            --text:           #1a1917;
+            --muted:          #5a5850;
+            --subtle:         #8a8880;
+            --accent:         #1a1917;
+            --accent-bg:      #dedad0;
+            --m-dot:          #3b82f6;
+            --f-dot:          #e879a0;
+            --radius-sm:      0px;
+            --radius-md:      4px;
+            --shadow-block:   3px 3px 0px var(--border);
         }
         [data-theme="dark"] {
-            --bg:        #111110;
-            --surface:   #1c1b19;
-            --border:    #2e2c28;
-            --text:      #f0ede8;
-            --muted:     #888580;
-            --subtle:    #5a5753;
-            --accent:    #5b8def;
-            --accent-bg: #1a2340;
-            --m-dot:     #60a5fa;
-            --f-dot:     #f472b6;
-            --marriage-color: #fb923c;
-            --link-color: rgba(80,76,72,0.6);
+            --bg:             #403d39; /* Gris pizarra oscuro lavado */
+            --surface:        #32302d;
+            --surface-raised: #47423b;
+            --surface-inset:  #242321;
+            --border:         #faf6f0; /* Tinta blanca lavada */
+            --border-subtle:  #8a8880;
+            --text:           #faf6f0;
+            --muted:          #b0ada6;
+            --subtle:         #6a6860;
+            --accent:         #faf6f0;
+            --accent-bg:      #242321;
+            --m-dot:          #60a5fa;
+            --f-dot:          #f472b6;
+            --shadow-block:   3px 3px 0px var(--border);
         }
 
         /* ── Reset ────────────────────────────────────────────── */
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { height: 100%; }
+        html { height: 100%; }
         body {
             font-family: 'Inter', system-ui, sans-serif;
-            font-size: 14px;
+            font-size: 13.5px;
             line-height: 1.5;
             background: var(--bg);
             color: var(--text);
@@ -55,7 +62,33 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            position: relative;
         }
+
+        /* Technical Grid */
+        .dotted-grid {
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(var(--border-subtle) 1px, transparent 1px);
+            background-size: 20px 20px;
+            opacity: 0.08;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Spinner */
+        #loadingOverlay {
+            position: fixed; inset: 0; background: var(--bg);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999; flex-direction: column; gap: 16px;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .spinner {
+            width: 36px; height: 36px;
+            border: 2px solid var(--border); border-top-color: var(--border-subtle);
+            animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* ── Top bar ──────────────────────────────────────────── */
         .topbar {
@@ -66,615 +99,242 @@
             gap: 12px;
             padding: 0 20px;
             background: var(--surface);
-            border-bottom: 1px solid var(--border);
+            border-bottom: 2px solid var(--border);
             flex-shrink: 0;
-            z-index: 100;
-        }
-        .topbar-brand {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            white-space: nowrap;
-        }
-        .topbar-brand-dot {
-            width: 7px; height: 7px;
-            background: var(--accent);
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-        .topbar-sep { flex: 1; }
-        .topbar-badge {
-            font-size: 10px;
-            font-weight: 600;
-            color: var(--accent);
-            background: var(--accent-bg);
-            padding: 2px 8px;
-            border-radius: 20px;
-            white-space: nowrap;
-        }
-        .topbar-btn {
-            display: flex; align-items: center; gap: 5px;
-            padding: 5px 11px;
-            font-size: 12px; font-weight: 500;
-            color: var(--muted);
-            background: transparent;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            text-decoration: none;
-            font-family: inherit;
-            white-space: nowrap;
-            transition: color .15s, background .15s;
-        }
-        .topbar-btn:hover { color: var(--text); background: var(--bg); }
-        .topbar-btn svg { width: 13px; height: 13px; fill: currentColor; flex-shrink: 0; }
-
-        /* ── Main 3-column layout ──────────────────────────────── */
-        .workspace {
-            flex: 1;
-            display: flex;
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* ── Left sidebar ──────────────────────────────────────── */
-        .sidebar-left {
-            width: 240px;
-            min-width: 240px;
-            display: flex;
-            flex-direction: column;
-            border-right: 1px solid var(--border);
-            background: var(--surface);
-            overflow: hidden;
             z-index: 10;
         }
-        .sidebar-section {
-            padding: 12px;
-            border-bottom: 1px solid var(--border);
-            flex-shrink: 0;
-        }
-        .sidebar-section-label {
-            font-size: 10px;
-            font-weight: 600;
+        .topbar-brand {
+            font-size: 13px; font-weight: 700; color: var(--text);
+            display: flex; align-items: center; gap: 8px;
             text-transform: uppercase;
-            letter-spacing: .06em;
-            color: var(--subtle);
-            margin-bottom: 8px;
+        }
+        .topbar-brand-dot { width: 8px; height: 8px; background: var(--text); border: 1px solid var(--bg); border-radius: 50%; }
+        .topbar-sep { flex: 1; }
+        .topbar-btn {
+            display: flex; align-items: center; gap: 5px;
+            padding: 5px 12px; font-size: 12px; font-weight: 600;
+            color: var(--text); background: var(--surface-raised);
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+            cursor: pointer; text-decoration: none; font-family: inherit;
+            box-shadow: 2px 2px 0px var(--border);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .topbar-btn:active, .topbar-btn.active { transform: translate(2px, 2px); box-shadow: none; }
+        .topbar-btn svg { width: 13px; height: 13px; fill: currentColor; }
+
+        /* ── Workspace ── */
+        .workspace {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 240px 1fr 300px;
+            overflow: hidden;
+            position: relative;
+            z-index: 5;
         }
 
-        /* Search */
-        .search-wrap {
+        /* Left Sidebar: Controls */
+        .sidebar-left {
+            background: var(--surface);
+            border-right: 2px solid var(--border);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+        }
+        .sidebar-search-wrap {
             position: relative;
         }
-        .search-wrap svg {
+        .sidebar-search-wrap svg {
             position: absolute;
             left: 10px; top: 50%;
             transform: translateY(-50%);
-            width: 13px; height: 13px;
+            width: 14px; height: 14px;
             fill: var(--subtle);
-            pointer-events: none;
         }
-        .search-input {
+        .sidebar-search {
             width: 100%;
-            padding: 7px 10px 7px 30px;
+            padding: 6px 8px 6px 30px;
+            font-size: 12.5px;
             font-family: inherit;
-            font-size: 12px;
             color: var(--text);
-            background: var(--bg);
+            background: var(--surface-inset);
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
-            outline: none;
-            transition: border-color .15s;
+            box-shadow: inset 1.5px 1.5px 0px rgba(0,0,0,0.05);
         }
-        .search-input:focus { border-color: var(--accent); }
-        .search-input::placeholder { color: var(--subtle); }
 
-        /* Lineage pills */
-        .pills-wrap {
+        .section-label {
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            color: var(--subtle);
+            margin-bottom: 6px;
+        }
+        .filter-pills {
             display: flex;
             flex-wrap: wrap;
-            gap: 5px;
+            gap: 4px;
         }
         .pill {
-            padding: 3px 9px;
-            font-size: 11px; font-weight: 500;
-            color: var(--muted);
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            cursor: pointer;
-            font-family: inherit;
-            transition: all .15s;
+            padding: 3px 8px; font-size: 11px; font-weight: 600;
+            background: var(--surface-raised); border: 1px solid var(--border);
+            color: var(--text); cursor: pointer;
+            box-shadow: 1.5px 1.5px 0px var(--border);
         }
-        .pill:hover { color: var(--accent); border-color: var(--accent); }
         .pill.active {
-            color: var(--surface);
-            background: var(--accent);
-            border-color: var(--accent);
+            background: var(--surface-inset);
+            box-shadow: none;
+            transform: translate(1.5px, 1.5px);
         }
 
-        /* Sliders */
         .control-row {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-        }
-        .control-item {
-            display: flex;
-            flex-direction: column;
             gap: 4px;
-        }
-        .control-label {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 11px;
-            color: var(--muted);
-        }
-        .control-label span { font-weight: 600; color: var(--text); }
-        input[type="range"] {
-            width: 100%;
-            accent-color: var(--accent);
-            cursor: pointer;
-        }
-
-        /* Toggle */
-        .toggle-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .toggle-label {
-            font-size: 12px;
-            color: var(--muted);
-        }
-        .toggle-switch {
-            position: relative;
-            width: 36px; height: 20px;
-        }
-        .toggle-switch input { opacity: 0; width: 0; height: 0; }
-        .toggle-slider {
-            position: absolute; inset: 0;
-            background: var(--border);
-            border-radius: 20px;
-            cursor: pointer;
-            transition: background .2s;
-        }
-        .toggle-slider::before {
-            content: '';
-            position: absolute;
-            width: 14px; height: 14px;
-            left: 3px; top: 3px;
-            background: var(--surface);
-            border-radius: 50%;
-            transition: transform .2s;
-            box-shadow: 0 1px 3px rgba(0,0,0,.15);
-        }
-        .toggle-switch input:checked + .toggle-slider { background: var(--accent); }
-        .toggle-switch input:checked + .toggle-slider::before { transform: translateX(16px); }
-
-        /* Stats */
-        .stats-wrap {
-            display: flex;
-            gap: 8px;
-        }
-        .stat-box {
-            flex: 1;
-            padding: 8px;
-            background: var(--bg);
+            background: var(--surface-inset);
+            padding: 8px 10px;
+            border: 1px solid var(--border);
             border-radius: var(--radius-sm);
-            text-align: center;
         }
-        .stat-num {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--accent);
-            line-height: 1;
-        }
-        .stat-desc {
-            font-size: 10px;
-            color: var(--subtle);
-            margin-top: 2px;
-        }
-
-        /* Sidebar scrollable section */
-        .sidebar-scroll {
-            flex: 1;
-            overflow-y: auto;
-            padding: 0;
-        }
-        .sidebar-scroll::-webkit-scrollbar { width: 4px; }
-        .sidebar-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-        /* Legend */
-        .legend-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
+        .control-row label {
             font-size: 11px;
+            font-weight: 700;
             color: var(--muted);
+            text-transform: uppercase;
         }
-        .legend-dot {
-            width: 10px; height: 10px;
-            border-radius: 50%;
-            flex-shrink: 0;
+        .range-slider {
+            -webkit-appearance: none;
+            width: 100%; height: 4px;
+            background: var(--border);
+            outline: none;
         }
-        .legend-line {
-            width: 20px; height: 2px;
-            flex-shrink: 0;
-        }
-        .legend-items {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px; height: 12px;
+            background: var(--surface-raised);
+            border: 2px solid var(--border);
+            cursor: pointer;
+            box-shadow: 1px 1px 0px var(--border);
         }
 
-        /* ── Graph area ────────────────────────────────────────── */
-        .graph-area {
+        /* SVG Graph area */
+        .graph-wrap {
             flex: 1;
             position: relative;
-            overflow: hidden;
             background: var(--bg);
         }
-        #graph-svg {
+        #graphSvg {
             width: 100%;
             height: 100%;
             display: block;
         }
 
-        /* ── Tooltip ───────────────────────────────────────────── */
-        #tooltip {
-            position: absolute;
-            pointer-events: none;
+        /* Right Sidebar: Profile details */
+        .sidebar-right {
             background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            padding: 6px 10px;
-            font-size: 12px;
-            color: var(--text);
-            box-shadow: 0 4px 16px rgba(0,0,0,.1);
-            opacity: 0;
-            transition: opacity .12s;
-            z-index: 200;
-            max-width: 180px;
-            white-space: nowrap;
-        }
-        #tooltip .tt-name { font-weight: 600; }
-        #tooltip .tt-sub { color: var(--muted); font-size: 11px; margin-top: 1px; }
-
-        /* ── Right panel ───────────────────────────────────────── */
-        .panel-right {
-            width: 300px;
-            min-width: 300px;
+            border-left: 2px solid var(--border);
+            padding: 16px;
             display: flex;
             flex-direction: column;
-            border-left: 1px solid var(--border);
-            background: var(--surface);
-            overflow: hidden;
-            position: relative;
-            transition: width .25s ease, min-width .25s ease;
-            z-index: 10;
-        }
-        .panel-right.collapsed {
-            width: 0;
-            min-width: 0;
-            border-left: none;
-        }
-        .panel-toggle {
-            position: absolute;
-            left: -13px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 26px; height: 40px;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 6px 0 0 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 20;
-            color: var(--subtle);
-            transition: color .15s, background .15s;
-            flex-shrink: 0;
-        }
-        .panel-toggle:hover { color: var(--text); background: var(--bg); }
-        .panel-toggle svg { width: 12px; height: 12px; fill: currentColor; transition: transform .25s; }
-        .panel-right.collapsed .panel-toggle svg { transform: rotate(180deg); }
-
-        .panel-right-scroll {
-            flex: 1;
+            gap: 16px;
             overflow-y: auto;
-            overflow-x: hidden;
         }
-        .panel-right-scroll::-webkit-scrollbar { width: 4px; }
-        .panel-right-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-        .panel-empty {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            gap: 12px;
-            color: var(--subtle);
-            padding: 24px;
-            text-align: center;
-        }
-        .panel-empty svg { width: 36px; height: 36px; fill: currentColor; opacity: .35; }
-        .panel-empty p { font-size: 12px; line-height: 1.5; }
-
-        /* Detail card */
-        .detail-card {
-            padding: 20px;
-        }
-        .detail-avatar {
-            width: 60px; height: 60px;
-            border-radius: 50%;
-            margin-bottom: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: 700;
-            color: #fff;
-            flex-shrink: 0;
+        .avatar-block {
+            width: 100px; height: 100px;
+            border-radius: var(--radius-sm);
+            border: 2px solid var(--border);
             overflow: hidden;
-            position: relative;
+            background: var(--surface-raised);
+            box-shadow: var(--shadow-block);
+            margin: 0 auto;
         }
-        .detail-avatar img {
+        .avatar-placeholder {
             width: 100%; height: 100%;
-            object-fit: cover;
-            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 32px; font-weight: 800; color: rgba(255,255,255,0.85);
+            text-shadow: 1px 1px 0px var(--border);
         }
-        .detail-name {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--text);
-            line-height: 1.2;
-            margin-bottom: 4px;
-        }
-        .detail-meaning {
-            font-size: 11px;
-            color: var(--muted);
-            font-style: italic;
-            margin-bottom: 14px;
-            line-height: 1.4;
-        }
-        .detail-sep {
-            height: 1px;
-            background: var(--border);
-            margin: 12px 0;
-        }
-        .meta-table {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
+
+        .meta-card {
+            border: 1px solid var(--border);
+            box-shadow: 2px 2px 0px var(--border);
+            background: var(--surface-raised);
         }
         .meta-row {
             display: flex;
-            align-items: baseline;
-            gap: 8px;
-        }
-        .meta-key {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--subtle);
-            min-width: 56px;
-            flex-shrink: 0;
-        }
-        .meta-val {
+            padding: 6px 10px;
+            border-bottom: 1px dashed var(--border-subtle);
             font-size: 12px;
-            color: var(--text);
         }
-        .meta-val.link {
-            color: var(--accent);
-            cursor: pointer;
-            text-decoration: none;
-        }
-        .meta-val.link:hover { text-decoration: underline; }
+        .meta-row:last-child { border-bottom: none; }
+        .meta-key { font-weight: 700; color: var(--subtle); width: 64px; text-transform: uppercase; font-size: 10px; }
+        .meta-val { font-weight: 600; color: var(--text); }
+        .meta-val.link { text-decoration: underline; cursor: pointer; }
 
-        .section-label {
-            font-size: 10px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: .06em;
-            color: var(--subtle);
-            margin-bottom: 8px;
-        }
-
-        .children-wrap {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-        }
-        .child-chip {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            padding: 3px 8px;
-            background: var(--bg);
+        .notes-block {
+            background: var(--surface-raised);
             border: 1px solid var(--border);
-            border-radius: 20px;
-            font-size: 11px;
-            cursor: pointer;
-            transition: border-color .15s;
-        }
-        .child-chip:hover { border-color: var(--accent); }
-        .child-chip-dot {
-            width: 6px; height: 6px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-
-        .notes-text {
+            padding: 10px;
             font-size: 12px;
+            line-height: 1.5;
             color: var(--muted);
-            line-height: 1.6;
+            box-shadow: 2px 2px 0px var(--border);
         }
 
-        .refs-wrap {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-        }
-        .ref-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 3px 8px;
-            background: var(--accent-bg);
-            color: var(--accent);
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 500;
-            text-decoration: none;
-        }
-        .ref-chip svg { width: 10px; height: 10px; fill: currentColor; }
-
-        .full-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 6px 12px;
-            font-size: 12px; font-weight: 500;
-            color: var(--accent);
-            background: var(--accent-bg);
-            border-radius: var(--radius-sm);
-            text-decoration: none;
-            margin-top: 4px;
-            transition: opacity .15s;
-        }
-        .full-link:hover { opacity: .8; }
-        .full-link svg { width: 12px; height: 12px; fill: currentColor; }
-
-        /* ── Spinner overlay ───────────────────────────────────── */
-        #spinner {
-            position: fixed;
-            inset: 0;
-            background: var(--bg);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            z-index: 9999;
-            transition: opacity .4s;
-        }
-        #spinner.hidden { opacity: 0; pointer-events: none; }
-        .spinner-ring {
-            width: 40px; height: 40px;
-            border: 3px solid var(--border);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .spinner-text {
-            font-size: 13px;
-            color: var(--muted);
-        }
-
-        /* ── Zoom controls ─────────────────────────────────────── */
-        .zoom-controls {
+        /* Hover Tooltip */
+        .tooltip {
             position: absolute;
-            bottom: 16px;
-            right: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            z-index: 50;
-        }
-        .zoom-btn {
-            width: 32px; height: 32px;
             background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
+            border: 2px solid var(--border);
+            padding: 6px 10px;
+            font-size: 11px;
+            pointer-events: none;
+            z-index: 1000;
+            box-shadow: var(--shadow-block);
+            display: none;
+        }
+
+        /* Legend dots */
+        .legend-row {
             display: flex;
             align-items: center;
-            justify-content: center;
-            cursor: pointer;
+            gap: 8px;
+            font-size: 12px;
             color: var(--muted);
-            font-size: 16px;
-            font-weight: 300;
-            transition: color .15s, background .15s;
-            line-height: 1;
         }
-        .zoom-btn:hover { color: var(--text); background: var(--bg); }
-        .zoom-btn svg { width: 14px; height: 14px; fill: currentColor; }
-
-        /* ── SVG graph styles ──────────────────────────────────── */
-        .graph-link {
-            fill: none;
-            stroke: var(--link-color);
-            stroke-width: 1.2;
-        }
-        .graph-link.marriage {
-            stroke: var(--marriage-color);
-            stroke-width: 1.5;
-            stroke-dasharray: 4 3;
-            opacity: .7;
-        }
-        .graph-node circle {
-            stroke-width: 2;
-            cursor: pointer;
-            transition: filter .15s;
-        }
-        .graph-node circle:hover { filter: brightness(1.15); }
-        .graph-node.dimmed { opacity: .15; }
-        .graph-link.dimmed { opacity: .05; }
-        .graph-node text {
-            pointer-events: none;
-            paint-order: stroke;
-            stroke: var(--bg);
-            stroke-width: 3px;
-            fill: var(--text);
-        }
-        @keyframes halo-pulse {
-            0%   { r: 0; opacity: .7; }
-            100% { r: 22; opacity: 0; }
-        }
-        .halo-ring {
-            fill: none;
-            stroke: var(--accent);
-            stroke-width: 2;
-            animation: halo-pulse .8s ease-out forwards;
-        }
-
-        /* ── Responsive ────────────────────────────────────────── */
-        @media (max-width: 860px) {
-            .sidebar-left { width: 200px; min-width: 200px; }
-            .panel-right { width: 260px; min-width: 260px; }
+        .legend-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            border: 1.5px solid var(--border);
         }
     </style>
 </head>
 <body>
 
-    <!-- ── Spinner ─────────────────────────────────────────────── -->
-    <div id="spinner">
-        <div class="spinner-ring"></div>
-        <div class="spinner-text">Construyendo grafo de relaciones…</div>
+    <!-- Dotted Grid background -->
+    <div class="dotted-grid"></div>
+
+    <!-- Spinner -->
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <span style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;">[Procesando Grafo Topológico]</span>
     </div>
 
-    <!-- ── Top bar ─────────────────────────────────────────────── -->
+    <!-- Topbar -->
     <header class="topbar">
         <div class="topbar-brand">
             <div class="topbar-brand-dot"></div>
-            Genealogía Bíblica
+            Grafo de Relaciones
         </div>
-        <span class="topbar-badge">Grafo de Relaciones</span>
+        <span style="font-size:11px;color:var(--subtle);font-family:monospace;">[d3_force_network]</span>
         <div class="topbar-sep"></div>
-        <a href="visor_genealogia.html" class="topbar-btn">
-            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
-            Visor
-        </a>
-        <a href="arbol_genealogico.html" class="topbar-btn">
-            <svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
-            Árbol
-        </a>
+        <a href="index.html" class="topbar-btn">Inicio</a>
+        <a href="visor_genealogia.html" class="topbar-btn">Fichas</a>
+        <a href="arbol_genealogico.html" class="topbar-btn">Árbol gráfico</a>
+        <a href="mapa_geografico.html" class="topbar-btn">Mapa</a>
+
         <button class="topbar-btn" id="themeToggle">
             <svg id="sunIcon" style="display:none" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3zm0-11c-.55 0-1-.45-1-1V2c0-.55.45-1 1-1s1 .45 1 1v1c0 .55-.45 1-1 1zm0 16c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1s1-.45 1-1v-1c0-.55-.45-1-1-1zm8-8c0-.55-.45-1-1-1h-1c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zM6 12c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zm11.66-5.66l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zm-11.31 11.3l-.71.71c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0l.71-.71c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0zm11.31.01l-.71.71c-.39-.39-1.02-.39-1.41 0l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zM6.35 6.34l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41z"/></svg>
             <svg id="moonIcon" viewBox="0 0 24 24"><path d="M12.3 22h-.1c-5.5 0-10-4.5-10-10 0-4.8 3.5-8.9 8.3-9.7.6-.1 1.1.4 1 1-.4 2.4.4 4.9 2.1 6.6 1.7 1.7 4.2 2.5 6.6 2.1.6-.1 1.1.4 1 1-.8 4.8-4.9 8.3-9.7 8.3z"/></svg>
@@ -682,803 +342,397 @@
         </button>
     </header>
 
-    <!-- ── Workspace ────────────────────────────────────────────── -->
+    <!-- Workspace -->
     <div class="workspace">
-
-        <!-- ── Left sidebar ──────────────────────────────────────── -->
+        
+        <!-- Left Sidebar -->
         <aside class="sidebar-left">
+            <div class="sidebar-search-wrap">
+                <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                <input type="text" class="sidebar-search" id="nodeSearch" placeholder="Buscar personaje…">
+            </div>
 
-            <!-- Search -->
-            <div class="sidebar-section">
-                <div class="sidebar-section-label">Buscar nodo</div>
-                <div class="search-wrap">
-                    <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                    <input type="text" class="search-input" id="searchInput" placeholder="Nombre del personaje…">
+            <div class="filter-group">
+                <span class="section-label">Linaje</span>
+                <div class="filter-pills" id="lineageFilter">
+                    <button class="pill active" data-val="Todos">Todos</button>
+                    <button class="pill" data-val="Adam">Adam</button>
+                    <button class="pill" data-val="Noé">Noé</button>
+                    <button class="pill" data-val="Abraham">Abraham</button>
+                    <button class="pill" data-val="Israel">Israel</button>
+                    <button class="pill" data-val="David">David</button>
                 </div>
             </div>
 
-            <!-- Lineage filter -->
-            <div class="sidebar-section">
-                <div class="sidebar-section-label">Filtrar por linaje</div>
-                <div class="pills-wrap" id="pillsWrap">
-                    <button class="pill active" data-lineage="todos" id="pillTodos">Todos</button>
-                    <button class="pill" data-lineage="Adam">Adam</button>
-                    <button class="pill" data-lineage="Noé">Noé</button>
-                    <button class="pill" data-lineage="Sem">Sem</button>
-                    <button class="pill" data-lineage="Abraham">Abraham</button>
-                    <button class="pill" data-lineage="Isaac">Isaac</button>
-                    <button class="pill" data-lineage="Israel">Israel</button>
-                    <button class="pill" data-lineage="Judá">Judá</button>
-                    <button class="pill" data-lineage="David">David</button>
+            <div class="control-row">
+                <label>Fuerza Repulsión</label>
+                <input type="range" class="range-slider" id="forceSlider" min="-500" max="-50" value="-200">
+            </div>
+
+            <div class="control-row">
+                <label>Vínculo Matrimonio</label>
+                <div style="display:flex; gap:6px; margin-top:4px;">
+                    <button class="pill active" id="toggleSpouses" style="flex:1;">Mostrar</button>
                 </div>
             </div>
 
-            <!-- Graph controls -->
-            <div class="sidebar-section">
-                <div class="sidebar-section-label">Controles del grafo</div>
-                <div class="control-row">
-                    <div class="control-item">
-                        <div class="control-label">
-                            Fuerza de repulsión
-                            <span id="chargeVal">−200</span>
-                        </div>
-                        <input type="range" id="chargeSlider" min="-500" max="-30" value="-200" step="10">
-                    </div>
-                    <div class="control-item">
-                        <div class="control-label">
-                            Distancia de enlace
-                            <span id="distanceVal">80</span>
-                        </div>
-                        <input type="range" id="distanceSlider" min="30" max="200" value="80" step="5">
-                    </div>
-                    <div class="toggle-row">
-                        <span class="toggle-label">Mostrar etiquetas</span>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="labelsToggle" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="toggle-row">
-                        <span class="toggle-label">Vínculos matrimonio</span>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="marriageToggle" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
+            <div class="control-row" style="background:var(--surface); border:none; padding:0;">
+                <span class="section-label">Estadísticas</span>
+                <div style="font-size:11.5px; color:var(--muted); line-height:1.6;">
+                    Nodos cargados: <strong id="nodesCount">0</strong><br>
+                    Enlaces calculados: <strong id="linksCount">0</strong>
                 </div>
             </div>
 
-            <!-- Legend -->
-            <div class="sidebar-section">
-                <div class="sidebar-section-label">Leyenda</div>
-                <div class="legend-items">
-                    <div class="legend-row">
-                        <div class="legend-dot" style="background:var(--m-dot)"></div>
-                        <span>Masculino</span>
-                    </div>
-                    <div class="legend-row">
-                        <div class="legend-dot" style="background:var(--f-dot)"></div>
-                        <span>Femenino</span>
-                    </div>
-                    <div class="legend-row">
-                        <div class="legend-line" style="background:var(--link-color)"></div>
-                        <span>Relación padre-hijo</span>
-                    </div>
-                    <div class="legend-row">
-                        <div class="legend-line" style="background:var(--marriage-color); border-top: 2px dashed var(--marriage-color); height:0;"></div>
-                        <span>Matrimonio</span>
-                    </div>
+            <div class="filter-group">
+                <span class="section-label">Leyenda</span>
+                <div class="legend-row">
+                    <div class="legend-dot" style="background:var(--m-dot);"></div>
+                    <span>Masculino</span>
                 </div>
-            </div>
-
-            <!-- Stats -->
-            <div class="sidebar-section">
-                <div class="sidebar-section-label">Estadísticas</div>
-                <div class="stats-wrap">
-                    <div class="stat-box">
-                        <div class="stat-num" id="statNodes">—</div>
-                        <div class="stat-desc">Personas</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-num" id="statLinks">—</div>
-                        <div class="stat-desc">Conexiones</div>
-                    </div>
-                </div>
-            </div>
-
-        </aside>
-
-        <!-- ── Graph area ─────────────────────────────────────────── -->
-        <div class="graph-area" id="graphArea">
-            <svg id="graph-svg"></svg>
-            <div id="tooltip">
-                <div class="tt-name" id="tt-name"></div>
-                <div class="tt-sub" id="tt-sub"></div>
-            </div>
-            <!-- Zoom controls -->
-            <div class="zoom-controls">
-                <button class="zoom-btn" id="zoomIn" title="Acercar">
-                    <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                </button>
-                <button class="zoom-btn" id="zoomOut" title="Alejar">
-                    <svg viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg>
-                </button>
-                <button class="zoom-btn" id="zoomReset" title="Restablecer vista">
-                    <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
-                </button>
-            </div>
-        </div>
-
-        <!-- ── Right panel ────────────────────────────────────────── -->
-        <aside class="panel-right" id="panelRight">
-            <button class="panel-toggle" id="panelToggle" title="Colapsar panel">
-                <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
-            </button>
-
-            <div class="panel-right-scroll" id="panelScroll">
-                <!-- Empty state -->
-                <div class="panel-empty" id="panelEmpty">
-                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
-                    <p>Haz clic en un nodo del grafo para ver la ficha del personaje</p>
-                </div>
-
-                <!-- Detail card (hidden until selection) -->
-                <div class="detail-card" id="detailCard" style="display:none">
-                    <div class="detail-avatar" id="detailAvatar"></div>
-                    <div class="detail-name" id="detailName"></div>
-                    <div class="detail-meaning" id="detailMeaning"></div>
-
-                    <div class="detail-sep"></div>
-
-                    <div class="meta-table" id="metaTable">
-                        <div class="meta-row">
-                            <span class="meta-key">Género</span>
-                            <span class="meta-val" id="dGender">—</span>
-                        </div>
-                        <div class="meta-row">
-                            <span class="meta-key">Padre</span>
-                            <span class="meta-val" id="dFather">—</span>
-                        </div>
-                        <div class="meta-row">
-                            <span class="meta-key">Madre</span>
-                            <span class="meta-val" id="dMother">—</span>
-                        </div>
-                        <div class="meta-row">
-                            <span class="meta-key">Cónyuge</span>
-                            <span class="meta-val" id="dSpouse">—</span>
-                        </div>
-                        <div class="meta-row">
-                            <span class="meta-key">Origen</span>
-                            <span class="meta-val" id="dBirth">—</span>
-                        </div>
-                    </div>
-
-                    <div class="detail-sep"></div>
-
-                    <!-- Children -->
-                    <div class="section-label">Descendientes directos</div>
-                    <div class="children-wrap" id="dChildren"></div>
-
-                    <div class="detail-sep"></div>
-
-                    <!-- Notes -->
-                    <div class="section-label">Reseña histórica</div>
-                    <p class="notes-text" id="dNotes"></p>
-
-                    <div class="detail-sep"></div>
-
-                    <!-- References -->
-                    <div class="section-label">Referencias bíblicas</div>
-                    <div class="refs-wrap" id="dRefs"></div>
-
-                    <div style="margin-top:14px;">
-                        <a href="#" id="dFullLink" class="full-link" target="_blank">
-                            <svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
-                            Ver ficha completa
-                        </a>
-                    </div>
+                <div class="legend-row">
+                    <div class="legend-dot" style="background:var(--f-dot);"></div>
+                    <span>Femenino</span>
                 </div>
             </div>
         </aside>
 
-    </div><!-- .workspace -->
+        <!-- SVG Graph viewport -->
+        <main class="graph-wrap">
+            <svg id="graphSvg"></svg>
+        </main>
 
-    <!-- ── Data + D3 ─────────────────────────────────────────────── -->
+        <!-- Right Sidebar (Ficha) -->
+        <aside class="sidebar-right" id="profileSidebar" style="display:none;">
+            <div class="avatar-block">
+                <div class="avatar-placeholder" id="valAvatarPlaceholder">?</div>
+            </div>
+            
+            <div style="border-bottom: 2px solid var(--border); padding-bottom:8px;">
+                <h2 id="valName" style="font-size:18px; font-weight:800; text-transform:uppercase;"></h2>
+                <p id="valMeaning" style="font-size:11px; font-style:italic; color:var(--muted); margin-top:2px;"></p>
+            </div>
+
+            <div class="meta-card">
+                <div class="meta-row"><span class="meta-key">Género</span><span class="meta-val" id="valGender">—</span></div>
+                <div class="meta-row"><span class="meta-key">Padre</span><span class="meta-val" id="valFather">—</span></div>
+                <div class="meta-row"><span class="meta-key">Madre</span><span class="meta-val" id="valMother">—</span></div>
+                <div class="meta-row"><span class="meta-key">Cónyuge</span><span class="meta-val" id="valSpouse">—</span></div>
+            </div>
+
+            <span class="section-label">Reseña histórica</span>
+            <div class="notes-block">
+                <p id="valNotes"></p>
+            </div>
+
+            <a href="#" id="fullProfileBtn" class="topbar-btn" target="_blank" style="justify-content:center;">Ver ficha completa →</a>
+        </aside>
+
+    </div>
+
+    <!-- Floating tooltip -->
+    <div class="tooltip" id="hoverTooltip"></div>
+
     <script src="genealogia_data.js"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
     <script>
-    /* ============================================================
-       1. Build the people map  (same logic as visor_genealogia.html)
-       ============================================================ */
-    const people = {};
+        const people = {};
+        let selectedLineage = "Todos";
+        let showSpouses = true;
 
-    const localPatriarchDetails = {
-        "Adam": {
-            lugar: "Jardín del Edén",
-            significado: "Derivado del hebreo «אָדָם» (adam), significa «hombre» o «humanidad»; también asociado con «tierra» o «suelo» (adamah).",
-            cruzada: "1 Crónicas 1 [Cruces: Adam: Génesis 1:26-27, 2:7, 5:1-5; Lucas 3:38; Romanos 5:12-21]",
-            adicional: "Primer ser humano creado por Dios en el relato del Génesis. Colocado en el Edén, desobedece la orden divina comiendo del árbol prohibido junto a Eva y es expulsado."
-        },
-        "Eva": {
-            lugar: "Jardín del Edén",
-            significado: "Del hebreo «חַוָּה» (Chavah), que significa «vida» o «madre de todos los vivientes».",
-            cruzada: "Génesis 2:21-25, 3:1-20; 2 Corintios 11:3; 1 Timoteo 2:13",
-            adicional: "Primera mujer, creada de la costilla de Adán. Seducida por la serpiente en la caída. Madre de Caín, Abel, Set y otros hijos."
-        },
-        "Set": {
-            lugar: "Fuera del Edén",
-            significado: "Del hebreo «שֵׁת» (Sheth), que significa «sustituto» o «designado».",
-            cruzada: "1 Crónicas 1 [Cruces: Set: Génesis 4:25-26, 5:3-8; Lucas 3:38]",
-            adicional: "Tercer hijo de Adán y Eva, nacido después de que Caín mató a Abel. De su línea desciende Noé."
-        },
-        "Noé": {
-            lugar: "Tierra pre-diluviana / Mesopotamia",
-            significado: "Del hebreo «נֹחַ» (Noach), que significa «descanso», «consuelo» o «alivio».",
-            cruzada: "1 Crónicas 1 [Cruces: Noé: Génesis 5:28-32, caps. 6-9; Lucas 3:36]",
-            adicional: "Hombre justo que construyó el arca para salvar a su familia y a las especies del Diluvio universal."
-        },
-        "Abraham": {
-            lugar: "Ur de los Caldeos",
-            significado: "Del hebreo «אַבְרָהָם» (Avraham), que significa «padre de multitudes».",
-            cruzada: "1 Crónicas 1 [Cruces: Abraham: Génesis 11:26-32, caps. 12-25; Lucas 3:34]",
-            adicional: "Patriarca hebreo clave. Padre de la fe en la teología bíblica."
-        },
-        "Israel": {
-            lugar: "Padan-aram",
-            significado: "Del hebreo «יִשְׂרָאֵל» (Yisrael), que significa «el que lucha con Dios». Originalmente Jacob.",
-            cruzada: "1 Crónicas 2 [Cruces: Israel: Génesis 25-35, 46-50; Lucas 3:34]",
-            adicional: "Hijo de Isaac y Rebeca. Padre de las doce tribus de Israel."
-        },
-        "David": {
-            lugar: "Belén",
-            significado: "Del hebreo «דָּוִד» (David), que significa «amado».",
-            cruzada: "1 Crónicas 3 [Cruces: David: 1 Samuel 16-31; 2 Samuel; Mateo 1; Lucas 3]",
-            adicional: "Segundo rey de Israel unificado. Venció a Goliat y recibió la promesa divina del trono eterno."
-        },
-        "Salomón": {
-            lugar: "Jerusalén",
-            significado: "Del hebreo «שְׁלֹמֹה» (Shlomoh), que significa «pacífico» o «paz».",
-            cruzada: "1 Crónicas 3 [Cruces: Salomón: 2 Samuel 12:24; 1 Reyes 1-11; Mateo 1]",
-            adicional: "Hijo de David y Betsabé. Edificó el Primer Templo de Jerusalén."
-        }
-    };
-
-    function buildRelationshipMap() {
-        if (typeof GENEALOGIA_DATA === 'undefined') return;
-        function getOrCreate(name) {
-            if (!name) return null;
-            const n = name.trim();
-            if (!n) return null;
-            if (!people[n]) people[n] = {
-                name: n, gender: "M", father: "", mother: "",
-                birthPlace: "", spouses: new Set(), children: [],
-                notes: "", reference: "", meaning: "", imageUrl: "",
-                refsUrls: "", externalLink: ""
-            };
-            return people[n];
-        }
-        GENEALOGIA_DATA.forEach(row => {
-            const childName = row["Hijos"], fatherName = row["Padre"], motherName = row["Madre"];
-            const child  = getOrCreate(childName);
-            const father = getOrCreate(fatherName);
-            const mother = getOrCreate(motherName);
-            if (child) {
-                if (fatherName) child.father = fatherName;
-                if (motherName) child.mother = motherName;
-                child.gender = row["Género Hijos"] || "M";
-                const rawPlace = row["Lugar de nacimiento"] || "";
-                child.birthPlace = rawPlace.replace(/\s*\(padre\)\s*/i, "").trim();
-                const fullInfo = row["Información Adicional"] || row["Notas"] || "";
-                const childMatch = fullInfo.match(/Sobre (?:el hijo|la hija) \([^)]+\):\s*(.+?)(?:\s*\|\s*Sobre (?:el padre|la madre)|$)/i);
-                child.notes = childMatch ? childMatch[1].trim() : fullInfo;
-                child.reference = row["Referencia"] || "";
-                if (row["Imagen_URL"])       child.imageUrl     = row["Imagen_URL"].trim();
-                if (row["Referencias_URLs"]) child.refsUrls     = row["Referencias_URLs"].trim();
-                if (row["Enlace_Externo"])   child.externalLink = row["Enlace_Externo"].trim();
+        function buildRelationshipMap() {
+            if (typeof GENEALOGIA_DATA === 'undefined') return;
+            function getOrCreate(name) {
+                if (!name) return null;
+                const n = name.trim(); if (!n) return null;
+                if (!people[n]) people[n] = { name:n, gender:"M", father:"", mother:"", birthPlace:"", spouses:new Set(), children:[], notes:"", reference:"", meaning:"" };
+                return people[n];
             }
-            if (father && childName) {
-                father.children.push({ name: childName, gender: row["Género Hijos"] || "M",
-                    birthPlace: (row["Lugar de nacimiento"] || "").replace(/\s*\(padre\)\s*/i, "").trim() });
-                if (motherName) { father.spouses.add(motherName); mother.spouses.add(fatherName); }
-            }
-            if (mother && childName) mother.children.push({ name: childName, gender: row["Género Hijos"] || "M", birthPlace: row["Lugar de nacimiento"] || "" });
-            if (fatherName && row["Significado del Nombre (Padre)"]) father.meaning = row["Significado del Nombre (Padre)"];
-        });
-        Object.keys(localPatriarchDetails).forEach(name => {
-            const local = localPatriarchDetails[name], p = getOrCreate(name);
-            if (!p) return;
-            if (local.lugar) p.birthPlace = local.lugar;
-            if (local.significado) p.meaning = local.significado;
-            if (local.adicional) p.notes = local.adicional;
-            if (local.cruzada) p.reference = local.cruzada;
-        });
-    }
-
-    /* ============================================================
-       2. Helpers
-       ============================================================ */
-    function avatarGradient(name) {
-        let h = 0;
-        for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
-        const h1 = Math.abs(h % 360), h2 = (h1 + 55) % 360;
-        return `linear-gradient(135deg, hsl(${h1},65%,48%) 0%, hsl(${h2},65%,38%) 100%)`;
-    }
-
-    function normalize(str) {
-        return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    }
-
-    function getLineageAncestors(name) {
-        /* Returns Set of all ancestors (incl. self) */
-        const visited = new Set();
-        function climb(n) {
-            if (!n || visited.has(n)) return;
-            visited.add(n);
-            const p = people[n];
-            if (p) {
-                if (p.father) climb(p.father);
-                if (p.mother) climb(p.mother);
-            }
+            GENEALOGIA_DATA.forEach(row => {
+                const cn = row["Hijos"], fn = row["Padre"], mn = row["Madre"];
+                const child = getOrCreate(cn), father = getOrCreate(fn), mother = getOrCreate(mn);
+                if (child) {
+                    if (fn) child.father = fn;
+                    if (mn) child.mother = mn;
+                    child.gender = row["Género Hijos"]||"M";
+                    child.birthPlace = (row["Lugar de nacimiento"]||"").replace(/\s*\(padre\)\s*/i,"").trim();
+                    const fi = row["Información Adicional"]||row["Notas"]||"";
+                    const cm = fi.match(/Sobre (?:el hijo|la hija) \([^)]+\):\s*(.+?)(?:\s*\|\s*Sobre (?:el padre|la madre)|$)/i);
+                    child.notes = cm ? cm[1].trim() : fi;
+                    child.reference = row["Referencia"]||"";
+                }
+                const cleanBP = (row["Lugar de nacimiento"]||"").replace(/\s*\(padre\)\s*/i,"").trim();
+                if (father && cn) { father.children.push({name:cn,gender:row["Género Hijos"]||"M",birthPlace:cleanBP}); if (mn){father.spouses.add(mn);mother.spouses.add(fn);} }
+                if (mother && cn) mother.children.push({name:cn,gender:row["Género Hijos"]||"M",birthPlace:cleanBP});
+                if (fn && row["Significado del Nombre (Padre)"]) father.meaning = row["Significado del Nombre (Padre)"];
+            });
         }
-        function descend(n) {
-            if (!n || visited.has(n)) return;
-            visited.add(n);
-            const p = people[n];
-            if (p) p.children.forEach(c => descend(c.name));
-        }
-        climb(name);
-        descend(name);
-        return visited;
-    }
 
-    /* ============================================================
-       3. D3 Graph
-       ============================================================ */
-    let simulation, gNode, gLink, gLabel, allNodes = [], allLinks = [],
-        activeLineage = "todos", searchHighlight = null,
-        currentZoomTransform = d3.zoomIdentity;
-
-    const svg  = d3.select("#graph-svg");
-    const root = svg.append("g").attr("id", "graph-root");
-
-    const zoom = d3.zoom()
-        .scaleExtent([0.05, 6])
-        .on("zoom", (event) => {
-            currentZoomTransform = event.transform;
-            root.attr("transform", event.transform);
-        });
-    svg.call(zoom).on("dblclick.zoom", null);
-
-    function buildGraphData() {
-        const nameList = Object.keys(people);
-        const nodeMap  = {};
-
-        allNodes = nameList.map(name => {
-            const p = people[name];
-            const n = {
-                id: name,
-                gender: p.gender,
-                nChildren: p.children.length,
-                r: Math.min(25, Math.max(5, Math.sqrt(p.children.length + 1) * 5))
-            };
-            nodeMap[name] = n;
-            return n;
-        });
-
-        allLinks = [];
-        nameList.forEach(name => {
-            const p = people[name];
-            if (p.father && nodeMap[p.father]) {
-                allLinks.push({ source: p.father, target: name, type: "parent" });
-            } else if (!p.father && p.mother && nodeMap[p.mother]) {
-                allLinks.push({ source: p.mother, target: name, type: "parent" });
+        function getLineagePath(name) {
+            const path = [], visited = new Set();
+            let cur = people[name];
+            while (cur && !visited.has(cur.name)) {
+                path.unshift(cur.name);
+                visited.add(cur.name);
+                if (cur.name.toLowerCase() === "adam") break;
+                cur = people[cur.father];
             }
-        });
+            return path;
+        }
 
-        // Marriage links (deduplicated)
-        const seen = new Set();
-        nameList.forEach(name => {
-            const p = people[name];
-            p.spouses.forEach(sp => {
-                const key = [name, sp].sort().join("||");
-                if (!seen.has(key) && nodeMap[sp]) {
-                    seen.add(key);
-                    allLinks.push({ source: name, target: sp, type: "marriage" });
+        function belongsToLineage(name, rootLineage) {
+            if (rootLineage === "Todos") return true;
+            return getLineagePath(name).includes(rootLineage);
+        }
+
+        function avatarGradient(name) {
+            let h = 0;
+            for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+            const h1 = Math.abs(h % 360), h2 = (h1 + 55) % 360;
+            return `linear-gradient(135deg, hsl(${h1},65%,48%) 0%, hsl(${h2},65%,38%) 100%)`;
+        }
+
+        // ── D3.js Force graph rendering ──
+        let svg, simulation, linkElements, nodeElements;
+        const width = 800, height = 600;
+
+        function initGraph() {
+            svg = d3.select("#graphSvg");
+            
+            // Add zoom container
+            const g = svg.append("g");
+            
+            svg.call(d3.zoom().on("zoom", (e) => {
+                g.attr("transform", e.transform);
+            }));
+
+            // Prepare nodes and links
+            const nodes = [];
+            const links = [];
+            const addedNodes = new Set();
+
+            Object.values(people).forEach(p => {
+                // Filter by lineage
+                if (selectedLineage !== "Todos" && !belongsToLineage(p.name, selectedLineage)) return;
+                
+                if (!addedNodes.has(p.name)) {
+                    nodes.push({ id: p.name, gender: p.gender, size: p.children.length });
+                    addedNodes.has(p.name);
+                    addedNodes.add(p.name);
+                }
+
+                // Parent relations
+                if (p.father && belongsToLineage(p.father, selectedLineage)) {
+                    if (!addedNodes.has(p.father)) {
+                        const fat = people[p.father];
+                        nodes.push({ id: p.father, gender: "M", size: fat ? fat.children.length : 1 });
+                        addedNodes.add(p.father);
+                    }
+                    links.push({ source: p.father, target: p.name, type: "parent" });
+                }
+
+                // Spouses relations
+                if (showSpouses && p.spouses) {
+                    p.spouses.forEach(sp => {
+                        if (belongsToLineage(sp, selectedLineage)) {
+                            if (!addedNodes.has(sp)) {
+                                const spouseObj = people[sp];
+                                nodes.push({ id: sp, gender: spouseObj ? spouseObj.gender : "F", size: spouseObj ? spouseObj.children.length : 1 });
+                                addedNodes.add(sp);
+                            }
+                            // Add spouse connection (punteado)
+                            links.push({ source: p.name, target: sp, type: "spouse" });
+                        }
+                    });
                 }
             });
-        });
 
-        document.getElementById("statNodes").textContent = allNodes.length;
-        document.getElementById("statLinks").textContent = allLinks.filter(l => l.type === "parent").length;
-    }
+            document.getElementById("nodesCount").textContent = nodes.length;
+            document.getElementById("linksCount").textContent = links.length;
 
-    function initSimulation() {
-        const charge   = +document.getElementById("chargeSlider").value;
-        const distance = +document.getElementById("distanceSlider").value;
+            // Clear previous svg groups
+            g.selectAll("*").remove();
 
-        const W = document.getElementById("graphArea").clientWidth;
-        const H = document.getElementById("graphArea").clientHeight;
+            // Force simulation setup
+            simulation = d3.forceSimulation(nodes)
+                .force("link", d3.forceLink(links).id(d => d.id).distance(80))
+                .force("charge", d3.forceManyBody().strength(-200))
+                .force("center", d3.forceCenter(svg.node().clientWidth / 2, svg.node().clientHeight / 2))
+                .force("collide", d3.forceCollide().radius(d => Math.sqrt(d.size + 1) * 5 + 6));
 
-        simulation = d3.forceSimulation(allNodes)
-            .force("link", d3.forceLink(allLinks).id(d => d.id).distance(distance).strength(0.6))
-            .force("charge", d3.forceManyBody().strength(charge))
-            .force("center", d3.forceCenter(W / 2, H / 2))
-            .force("collide", d3.forceCollide(d => d.r + 4))
-            .alphaDecay(0.02)
-            .on("tick", ticked);
-    }
+            // Link elements (bosquejo monocromo)
+            linkElements = g.selectAll(".link")
+                .data(links)
+                .enter().append("line")
+                .attr("stroke", "var(--border)")
+                .attr("stroke-opacity", 0.6)
+                .attr("stroke-width", d => d.type === "spouse" ? 1.5 : 1)
+                .attr("stroke-dasharray", d => d.type === "spouse" ? "3,3" : null);
 
-    function renderGraph() {
-        root.selectAll("*").remove();
+            // Node elements (estilo botón skeuo)
+            nodeElements = g.selectAll(".node")
+                .data(nodes)
+                .enter().append("g")
+                .attr("class", "node")
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended));
 
-        const showMarriage = document.getElementById("marriageToggle").checked;
-        const showLabels   = document.getElementById("labelsToggle").checked;
+            nodeElements.append("circle")
+                .attr("r", d => Math.sqrt(d.size + 1) * 4 + 4)
+                .attr("fill", d => d.gender === "F" ? "var(--f-dot)" : "var(--m-dot)")
+                .attr("stroke", "var(--border)")
+                .attr("stroke-width", 2)
+                .attr("cursor", "pointer")
+                .on("click", (e, d) => selectNode(d.id))
+                .on("mouseover", showTooltip)
+                .on("mouseleave", hideTooltip);
 
-        const filteredLinks = showMarriage ? allLinks : allLinks.filter(l => l.type !== "marriage");
+            nodeElements.append("text")
+                .text(d => d.id)
+                .attr("x", d => Math.sqrt(d.size + 1) * 4 + 8)
+                .attr("y", 4)
+                .attr("font-size", "10px")
+                .attr("font-weight", "600")
+                .attr("fill", "var(--text)")
+                .attr("pointer-events", "none")
+                .style("display", nodes.length > 80 ? "none" : "block");
 
-        // Links
-        gLink = root.append("g").attr("class", "links")
-            .selectAll("line")
-            .data(filteredLinks)
-            .join("line")
-            .attr("class", d => "graph-link" + (d.type === "marriage" ? " marriage" : ""));
+            simulation.on("tick", () => {
+                linkElements
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
 
-        // Nodes
-        const nodeG = root.append("g").attr("class", "nodes")
-            .selectAll("g")
-            .data(allNodes)
-            .join("g")
-            .attr("class", "graph-node")
-            .call(drag(simulation));
-
-        nodeG.append("circle")
-            .attr("r", d => d.r)
-            .attr("fill", d => d.gender === "F" ? "var(--f-dot)" : "var(--m-dot)")
-            .attr("stroke", "var(--surface)")
-            .on("mouseover", onNodeHover)
-            .on("mousemove", onNodeMove)
-            .on("mouseout",  onNodeOut)
-            .on("click",     onNodeClick);
-
-        gNode = nodeG;
-
-        // Labels
-        gLabel = root.append("g").attr("class", "labels")
-            .selectAll("text")
-            .data(allNodes)
-            .join("text")
-            .attr("font-size", 10)
-            .attr("text-anchor", "middle")
-            .attr("dy", d => d.r + 12)
-            .text(d => d.id)
-            .style("display", showLabels ? null : "none")
-            .style("pointer-events", "none");
-
-        simulation.nodes(allNodes);
-        simulation.force("link").links(filteredLinks);
-        simulation.alpha(0.6).restart();
-    }
-
-    function ticked() {
-        if (gLink) gLink
-            .attr("x1", d => d.source.x)
-            .attr("y1", d => d.source.y)
-            .attr("x2", d => d.target.x)
-            .attr("y2", d => d.target.y);
-
-        if (gNode) gNode.attr("transform", d => `translate(${d.x},${d.y})`);
-        if (gLabel) gLabel
-            .attr("x", d => d.x)
-            .attr("y", d => d.y);
-    }
-
-    function drag(sim) {
-        return d3.drag()
-            .on("start", (event, d) => {
-                if (!event.active) sim.alphaTarget(0.3).restart();
-                d.fx = d.x; d.fy = d.y;
-            })
-            .on("drag", (event, d) => {
-                d.fx = event.x; d.fy = event.y;
-            })
-            .on("end", (event, d) => {
-                if (!event.active) sim.alphaTarget(0);
-                d.fx = null; d.fy = null;
+                nodeElements
+                    .attr("transform", d => `translate(${d.x},${d.y})`);
             });
-    }
-
-    /* ── Tooltip ──────────────────────────────────────────────── */
-    const tooltip = document.getElementById("tooltip");
-    function onNodeHover(event, d) {
-        document.getElementById("tt-name").textContent = d.id;
-        document.getElementById("tt-sub").textContent  = d.nChildren > 0
-            ? `${d.nChildren} hijo${d.nChildren > 1 ? 's' : ''}`
-            : "Sin descendientes registrados";
-        tooltip.style.opacity = "1";
-    }
-    function onNodeMove(event) {
-        const rect = document.getElementById("graphArea").getBoundingClientRect();
-        tooltip.style.left = (event.clientX - rect.left + 14) + "px";
-        tooltip.style.top  = (event.clientY - rect.top  - 32) + "px";
-    }
-    function onNodeOut() {
-        tooltip.style.opacity = "0";
-    }
-
-    /* ── Node click → show detail panel ──────────────────────── */
-    let selectedNode = null;
-    function onNodeClick(event, d) {
-        event.stopPropagation();
-        selectedNode = d.id;
-        highlightNode(d.id);
-        showDetail(d.id);
-        pulseHalo(d);
-    }
-
-    function pulseHalo(d) {
-        root.selectAll(".halo-ring").remove();
-        const g = gNode.filter(n => n.id === d.id);
-        g.append("circle")
-            .attr("class", "halo-ring")
-            .attr("r", d.r)
-            .attr("cx", 0).attr("cy", 0)
-            .on("end", function() { d3.select(this).remove(); });
-    }
-
-    function highlightNode(name) {
-        if (!gNode) return;
-        gNode.classed("dimmed", n => n.id !== name);
-        if (gLink) gLink.classed("dimmed", l =>
-            l.source.id !== name && l.target.id !== name);
-    }
-
-    function clearHighlight() {
-        if (gNode) gNode.classed("dimmed", false);
-        if (gLink) gLink.classed("dimmed", false);
-    }
-
-    /* click on background → clear */
-    svg.on("click", () => {
-        if (selectedNode) { selectedNode = null; clearHighlight(); }
-    });
-
-    /* ── Detail panel ─────────────────────────────────────────── */
-    function showDetail(name) {
-        const p = people[name];
-        if (!p) return;
-
-        document.getElementById("panelEmpty").style.display  = "none";
-        document.getElementById("detailCard").style.display  = "block";
-
-        // Avatar
-        const av = document.getElementById("detailAvatar");
-        av.innerHTML = "";
-        av.style.background = avatarGradient(name);
-        const portraitSrc = p.imageUrl || (name.toLowerCase() === "adam" ? "adam_portrait.png" : "");
-        if (portraitSrc) {
-            const img = document.createElement("img");
-            img.src = portraitSrc;
-            img.alt = name;
-            img.onerror = () => { img.remove(); av.textContent = name.charAt(0); };
-            av.appendChild(img);
-        } else {
-            av.textContent = name.charAt(0);
         }
 
-        document.getElementById("detailName").textContent    = p.name;
-        document.getElementById("detailMeaning").textContent = p.meaning || "Significado del nombre no registrado.";
+        // Drag handlers
+        function dragstarted(e, d) {
+            if (!e.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x; d.fy = d.y;
+        }
+        function dragged(e, d) {
+            d.fx = e.x; d.fy = e.y;
+        }
+        function dragended(e, d) {
+            if (!e.active) simulation.alphaTarget(0);
+            d.fx = null; d.fy = null;
+        }
 
-        // Meta
-        document.getElementById("dGender").textContent = p.gender === "F" ? "Femenino" : "Masculino";
+        // Ficha selection
+        function selectNode(name) {
+            const p = people[name];
+            if (!p) return;
 
-        const fEl = document.getElementById("dFather");
-        if (p.father) {
-            fEl.textContent = p.father; fEl.className = "meta-val link";
-            fEl.onclick = () => { onNodeClickByName(p.father); };
-        } else { fEl.textContent = "—"; fEl.className = "meta-val"; fEl.onclick = null; }
+            const sidebar = document.getElementById("profileSidebar");
+            sidebar.style.display = "flex";
 
-        const mEl = document.getElementById("dMother");
-        if (p.mother) {
-            mEl.textContent = p.mother; mEl.className = "meta-val link";
-            mEl.onclick = () => { onNodeClickByName(p.mother); };
-        } else { mEl.textContent = "—"; mEl.className = "meta-val"; mEl.onclick = null; }
+            document.getElementById("valName").textContent = p.name;
+            document.getElementById("valMeaning").textContent = p.meaning || "Significado no registrado.";
+            document.getElementById("valGender").textContent = p.gender === "M" ? "Masculino" : "Femenino";
+            
+            const fEl = document.getElementById("valFather");
+            if (p.father) { fEl.textContent = p.father; fEl.className = "meta-val link"; fEl.onclick = () => selectNode(p.father); }
+            else { fEl.textContent = "—"; fEl.className = "meta-val"; fEl.onclick = null; }
 
-        const spouses = p.spouses.size > 0 ? Array.from(p.spouses).join(", ") :
-            (name.toLowerCase() === "adam" ? "Eva" : "—");
-        document.getElementById("dSpouse").textContent = spouses;
-        document.getElementById("dBirth").textContent  = p.birthPlace || "—";
+            const mEl = document.getElementById("valMother");
+            if (p.mother) { mEl.textContent = p.mother; mEl.className = "meta-val link"; mEl.onclick = () => selectNode(p.mother); }
+            else { mEl.textContent = "—"; mEl.className = "meta-val"; mEl.onclick = null; }
 
-        // Children
-        const cWrap = document.getElementById("dChildren");
-        cWrap.innerHTML = "";
-        let kids = p.children;
-        if (name.toLowerCase() === "adam" && kids.length === 0)
-            kids = [{name:"Caín",gender:"M"},{name:"Abel",gender:"M"},{name:"Set",gender:"M"}];
-        if (kids.length > 0) {
-            kids.forEach(c => {
-                const chip = document.createElement("div");
-                chip.className = "child-chip";
-                const color = (c.gender||"M").toUpperCase() === "F" ? "var(--f-dot)" : "var(--m-dot)";
-                chip.innerHTML = `<div class="child-chip-dot" style="background:${color}"></div>${c.name}`;
-                chip.onclick = () => onNodeClickByName(c.name);
-                cWrap.appendChild(chip);
+            const spouseVal = document.getElementById("valSpouse");
+            spouseVal.textContent = Array.from(p.spouses).join(", ") || "—";
+
+            document.getElementById("valNotes").textContent = p.notes || "Sin reseña biográfica registrada.";
+
+            const ph = document.getElementById("valAvatarPlaceholder");
+            ph.textContent = p.name.charAt(0);
+            ph.style.background = avatarGradient(p.name);
+
+            document.getElementById("fullProfileBtn").href = `visor_genealogia.html?name=${encodeURIComponent(p.name)}`;
+
+            // Highlight circle in graph SVG
+            d3.selectAll("circle").attr("stroke-width", 2);
+            d3.selectAll("circle").filter(d => d.id === name)
+                .attr("stroke-width", 4);
+        }
+
+        // Hover tooltip logic
+        const tooltipEl = document.getElementById("hoverTooltip");
+        function showTooltip(e, d) {
+            tooltipEl.innerHTML = `<strong>${d.id}</strong><br>${d.gender === "F" ? "Femenino" : "Masculino"}<br>Descendientes: ${d.size}`;
+            tooltipEl.style.left = `${e.pageX + 12}px`;
+            tooltipEl.style.top = `${e.pageY + 12}px`;
+            tooltipEl.style.display = "block";
+        }
+        function hideTooltip() {
+            tooltipEl.style.display = "none";
+        }
+
+        function setupTheme() {
+            const toggle = document.getElementById("themeToggle");
+            const sun = document.getElementById("sunIcon"), moon = document.getElementById("moonIcon");
+            const apply = theme => {
+                document.documentElement.setAttribute("data-theme", theme);
+                sun.style.display = theme === "dark" ? "block" : "none";
+                moon.style.display = theme === "dark" ? "none" : "block";
+            };
+            apply(localStorage.getItem("theme") || "light");
+            toggle.addEventListener("click", () => {
+                const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+                localStorage.setItem("theme", next); apply(next);
             });
-        } else {
-            cWrap.innerHTML = '<span style="font-size:11px;color:var(--subtle)">Sin descendientes registrados</span>';
         }
 
-        // Notes
-        document.getElementById("dNotes").textContent = p.notes || "Sin información biográfica registrada.";
+        window.addEventListener("DOMContentLoaded", () => {
+            buildRelationshipMap();
+            initGraph();
+            setupTheme();
 
-        // References
-        const refsEl = document.getElementById("dRefs");
-        refsEl.innerHTML = "";
-        if (p.reference) {
-            const mainRef = p.reference.split("[")[0].trim();
-            const el = document.createElement("span");
-            el.className = "ref-chip";
-            el.textContent = mainRef;
-            refsEl.appendChild(el);
-        } else {
-            refsEl.innerHTML = '<span style="font-size:11px;color:var(--subtle)">Sin referencias registradas</span>';
-        }
+            // Search filter nodes
+            const search = document.getElementById("nodeSearch");
+            search.addEventListener("input", e => {
+                const q = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                d3.selectAll(".node").each(function(d) {
+                    const match = d.id.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(q);
+                    d3.select(this).style("opacity", match ? 1 : 0.15);
+                });
+            });
 
-        // Full link
-        const fullLink = document.getElementById("dFullLink");
-        fullLink.href = `visor_genealogia.html?name=${encodeURIComponent(name)}`;
+            // Pills linaje
+            document.querySelectorAll("#lineageFilter .pill").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    document.querySelectorAll("#lineageFilter .pill").forEach(b => b.classList.remove("active"));
+                    btn.classList.add("active");
+                    selectedLineage = btn.dataset.val;
+                    initGraph();
+                });
+            });
 
-        // Open panel if collapsed
-        const panel = document.getElementById("panelRight");
-        if (panel.classList.contains("collapsed")) {
-            panel.classList.remove("collapsed");
-        }
-    }
+            // Sliders skeuo D3 simulations
+            document.getElementById("forceSlider").addEventListener("input", e => {
+                const val = parseInt(e.target.value);
+                simulation.force("charge").strength(val);
+                simulation.alpha(0.3).restart();
+            });
 
-    function onNodeClickByName(name) {
-        const d = allNodes.find(n => n.id === name);
-        if (d) {
-            selectedNode = name;
-            highlightNode(name);
-            showDetail(name);
-            // Pan to node
-            const W = document.getElementById("graphArea").clientWidth;
-            const H = document.getElementById("graphArea").clientHeight;
-            svg.transition().duration(500).call(
-                zoom.transform,
-                d3.zoomIdentity.translate(W/2 - d.x, H/2 - d.y)
-            );
-        }
-    }
+            // Toggle spouses connections
+            const toggleSp = document.getElementById("toggleSpouses");
+            toggleSp.addEventListener("click", () => {
+                showSpouses = !showSpouses;
+                toggleSp.classList.toggle("active", !showSpouses);
+                toggleSp.textContent = showSpouses ? "Mostrar" : "Ocultar";
+                initGraph();
+            });
 
-    /* ── Panel toggle ─────────────────────────────────────────── */
-    document.getElementById("panelToggle").addEventListener("click", () => {
-        document.getElementById("panelRight").classList.toggle("collapsed");
-    });
-
-    /* ── Search ───────────────────────────────────────────────── */
-    document.getElementById("searchInput").addEventListener("input", e => {
-        const q = normalize(e.target.value.trim());
-        if (!q) {
-            if (selectedNode) highlightNode(selectedNode); else clearHighlight();
-            return;
-        }
-        const match = allNodes.find(n => normalize(n.id) === q)
-                   || allNodes.find(n => normalize(n.id).startsWith(q))
-                   || allNodes.find(n => normalize(n.id).includes(q));
-        if (match) {
-            selectedNode = match.id;
-            highlightNode(match.id);
-            showDetail(match.id);
-            // Pan to match
-            const W = document.getElementById("graphArea").clientWidth;
-            const H = document.getElementById("graphArea").clientHeight;
-            svg.transition().duration(600).call(
-                zoom.transform,
-                d3.zoomIdentity.translate(W/2 - match.x, H/2 - match.y).scale(1.5)
-            );
-        }
-    });
-
-    /* ── Lineage filter ───────────────────────────────────────── */
-    document.getElementById("pillsWrap").addEventListener("click", e => {
-        const pill = e.target.closest(".pill");
-        if (!pill) return;
-        document.querySelectorAll(".pill").forEach(p => p.classList.remove("active"));
-        pill.classList.add("active");
-        activeLineage = pill.dataset.lineage;
-        applyLineageFilter();
-    });
-
-    function applyLineageFilter() {
-        if (!gNode || !gLink) return;
-        if (activeLineage === "todos") {
-            gNode.style("display", null);
-            gLink.style("display", null);
-            clearHighlight();
-            return;
-        }
-        const inScope = getLineageAncestors(activeLineage);
-        gNode.style("display", d => inScope.has(d.id) ? null : "none");
-        gLink.style("display", l => {
-            const sId = typeof l.source === "object" ? l.source.id : l.source;
-            const tId = typeof l.target === "object" ? l.target.id : l.target;
-            return inScope.has(sId) && inScope.has(tId) ? null : "none";
+            // Hide overlay spinner
+            const overlay = document.getElementById("loadingOverlay");
+            overlay.style.opacity = "0";
+            setTimeout(() => overlay.style.display = "none", 300);
         });
-    }
-
-    /* ── Simulation sliders ───────────────────────────────────── */
-    document.getElementById("chargeSlider").addEventListener("input", e => {
-        document.getElementById("chargeVal").textContent = "−" + Math.abs(+e.target.value);
-        if (simulation) {
-            simulation.force("charge").strength(+e.target.value);
-            simulation.alpha(0.4).restart();
-        }
-    });
-    document.getElementById("distanceSlider").addEventListener("input", e => {
-        document.getElementById("distanceVal").textContent = e.target.value;
-        if (simulation) {
-            simulation.force("link").distance(+e.target.value);
-            simulation.alpha(0.4).restart();
-        }
-    });
-
-    /* ── Labels toggle ────────────────────────────────────────── */
-    document.getElementById("labelsToggle").addEventListener("change", e => {
-        if (gLabel) gLabel.style("display", e.target.checked ? null : "none");
-    });
-
-    /* ── Marriage links toggle ────────────────────────────────── */
-    document.getElementById("marriageToggle").addEventListener("change", () => {
-        renderGraph();
-        applyLineageFilter();
-    });
-
-    /* ── Zoom buttons ─────────────────────────────────────────── */
-    document.getElementById("zoomIn").addEventListener("click", () => {
-        svg.transition().duration(300).call(zoom.scaleBy, 1.4);
-    });
-    document.getElementById("zoomOut").addEventListener("click", () => {
-        svg.transition().duration(300).call(zoom.scaleBy, 1 / 1.4);
-    });
-    document.getElementById("zoomReset").addEventListener("click", () => {
-        const W = document.getElementById("graphArea").clientWidth;
-        const H = document.getElementById("graphArea").clientHeight;
-        svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(W/2, H/2).scale(0.5));
-    });
-
-    /* ── Theme toggle ─────────────────────────────────────────── */
-    function setupTheme() {
-        const toggle = document.getElementById("themeToggle");
-        const sun    = document.getElementById("sunIcon");
-        const moon   = document.getElementById("moonIcon");
-        const apply  = theme => {
-            document.documentElement.setAttribute("data-theme", theme);
-            sun.style.display  = theme === "dark" ? "block" : "none";
-            moon.style.display = theme === "dark" ? "none" : "block";
-        };
-        apply(localStorage.getItem("theme") || "light");
-        toggle.addEventListener("click", () => {
-            const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
-            localStorage.setItem("theme", next);
-            apply(next);
-        });
-    }
-
-    /* ── Init ─────────────────────────────────────────────────── */
-    window.addEventListener("DOMContentLoaded", () => {
-        setupTheme();
-        buildRelationshipMap();
-        buildGraphData();
-        initSimulation();
-        renderGraph();
-
-        // Hide spinner after first few ticks
-        setTimeout(() => {
-            const spinner = document.getElementById("spinner");
-            spinner.classList.add("hidden");
-            setTimeout(() => spinner.remove(), 500);
-        }, 800);
-    });
     </script>
 </body>
 </html>
