@@ -108,7 +108,7 @@
             background: var(--surface);
             border-bottom: 2px solid var(--border);
             flex-shrink: 0;
-            z-index: 10;
+            z-index: 50;
         }
         .topbar-brand {
             font-size: 13px; font-weight: 700; color: var(--text);
@@ -128,6 +128,39 @@
         }
         .topbar-btn:active, .topbar-btn.active { transform: translate(2px, 2px); box-shadow: none; }
         .topbar-btn svg { width: 13px; height: 13px; fill: currentColor; }
+
+        .topbar-nav-links {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        /* Mobile controls buttons */
+        .menu-toggle, .filter-toggle {
+            display: none;
+            background: var(--surface-raised);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            padding: 6px;
+            color: var(--text);
+            box-shadow: 1.5px 1.5px 0px var(--border);
+        }
+        .menu-toggle svg, .filter-toggle svg { width: 18px; height: 18px; fill: currentColor; display: block; }
+        .menu-toggle:active, .filter-toggle:active { transform: translate(1px, 1px); box-shadow: none; }
+
+        /* Slidedown navigation */
+        .nav-overlay {
+            display: none;
+            position: absolute;
+            top: 52px; left: 0; right: 0;
+            background: var(--surface);
+            border-bottom: 2px solid var(--border);
+            z-index: 100;
+            flex-direction: column;
+            padding: 16px;
+            gap: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
 
         /* ── Workspace layout ─────────────────────────────────── */
         .workspace {
@@ -223,6 +256,7 @@
         #map {
             width: 100%;
             height: 100%;
+            z-index: 1;
         }
 
         /* Info Popup / Overlay Panel (Double border Neo-Skeuo) */
@@ -318,11 +352,32 @@
         }
         .leaflet-bar a:last-child { border-bottom: none !important; }
 
-        /* ── Responsive / Mobile ──────────────────────────────── */
-        @media (max-width: 640px) {
-            .workspace { flex-direction: column; }
-            .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 2px solid var(--border); }
-            .info-panel { width: calc(100% - 40px); left: 20px; }
+        /* ── Responsive / Mobile Drawer Adjustments ────────────── */
+        @media (max-width: 768px) {
+            .topbar-nav-links { display: none; }
+            .menu-toggle, .filter-toggle { display: block; }
+            
+            .sidebar {
+                position: absolute;
+                left: 0; top: 0; bottom: 0; width: 260px;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                z-index: 100;
+                box-shadow: 4px 0 0 var(--border);
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .info-panel {
+                width: calc(100% - 40px);
+                left: 20px;
+                right: 20px;
+                bottom: 20px;
+            }
+            .nav-overlay.open {
+                display: flex;
+            }
         }
     </style>
 </head>
@@ -330,6 +385,9 @@
 
     <!-- Dotted Technical Grid -->
     <div class="dotted-grid"></div>
+
+    <!-- Backdrop overlay for mobile filter drawer -->
+    <div id="mapBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:90;"></div>
 
     <!-- Loading Spinner Overlay -->
     <div id="loadingOverlay">
@@ -339,17 +397,25 @@
 
     <!-- Top bar -->
     <header class="topbar">
+        <button class="menu-toggle" id="menuToggle" aria-label="Menu">
+            <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        </button>
+        <button class="filter-toggle" id="filterToggle" aria-label="Filtros">
+            <svg viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
+        </button>
+
         <div class="topbar-brand">
             <div class="topbar-brand-dot"></div>
             Mapa Geográfico
         </div>
-        <span style="font-size:11px;color:var(--subtle);font-family:monospace;">[leaflet_cartography]</span>
         <div class="topbar-sep"></div>
         
-        <a href="index.html" class="topbar-btn">Inicio</a>
-        <a href="visor_genealogia.html" class="topbar-btn">Fichas</a>
-        <a href="arbol_genealogico.html" class="topbar-btn">Árbol gráfico</a>
-        <a href="grafo_relaciones.html" class="topbar-btn">Grafo</a>
+        <div class="topbar-nav-links">
+            <a href="index.html" class="topbar-btn">Inicio</a>
+            <a href="visor_genealogia.html" class="topbar-btn">Fichas</a>
+            <a href="arbol_genealogico.html" class="topbar-btn">Árbol gráfico</a>
+            <a href="grafo_relaciones.html" class="topbar-btn">Grafo</a>
+        </div>
         
         <button class="topbar-btn" id="themeToggle">
             <svg id="sunIcon" style="display:none" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3zm0-11c-.55 0-1-.45-1-1V2c0-.55.45-1 1-1s1 .45 1 1v1c0 .55-.45 1-1 1zm0 16c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1s1-.45 1-1v-1c0-.55-.45-1-1-1zm8-8c0-.55-.45-1-1-1h-1c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zM6 12c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zm11.66-5.66l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zm-11.31 11.3l-.71.71c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0l.71-.71c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0zm11.31.01l-.71.71c-.39-.39-1.02-.39-1.41 0l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zM6.35 6.34l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41z"/></svg>
@@ -358,11 +424,19 @@
         </button>
     </header>
 
+    <!-- Mobile Navigation Menu -->
+    <div class="nav-overlay" id="navOverlay">
+        <a href="index.html" class="topbar-btn">Inicio</a>
+        <a href="visor_genealogia.html" class="topbar-btn">Fichas</a>
+        <a href="arbol_genealogico.html" class="topbar-btn">Árbol gráfico</a>
+        <a href="grafo_relaciones.html" class="topbar-btn">Grafo</a>
+    </div>
+
     <!-- Workspace -->
     <div class="workspace">
         
         <!-- Sidebar filters -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
             <!-- Lineage -->
             <div class="filter-group">
                 <span class="section-label">Linaje raíz</span>
@@ -645,11 +719,49 @@
             });
         }
 
+        function setupResponsive() {
+            const menuToggle = document.getElementById("menuToggle");
+            const filterToggle = document.getElementById("filterToggle");
+            const navOverlay = document.getElementById("navOverlay");
+            const sidebar = document.getElementById("sidebar");
+            const backdrop = document.getElementById("mapBackdrop");
+
+            menuToggle.addEventListener("click", e => {
+                navOverlay.classList.toggle("open");
+                sidebar.classList.remove("open");
+                backdrop.style.display = "none";
+                e.stopPropagation();
+            });
+
+            filterToggle.addEventListener("click", e => {
+                const isOpen = sidebar.classList.contains("open");
+                if (isOpen) {
+                    sidebar.classList.remove("open");
+                    backdrop.style.display = "none";
+                } else {
+                    sidebar.classList.add("open");
+                    navOverlay.classList.remove("open");
+                    backdrop.style.display = "block";
+                }
+                e.stopPropagation();
+            });
+
+            backdrop.addEventListener("click", () => {
+                sidebar.classList.remove("open");
+                backdrop.style.display = "none";
+            });
+
+            document.addEventListener("click", () => {
+                navOverlay.classList.remove("open");
+            });
+        }
+
         window.addEventListener("DOMContentLoaded", () => {
             buildRelationshipMap();
             initMap();
             populateMarkers();
             setupTheme();
+            setupResponsive();
 
             const overlay = document.getElementById("loadingOverlay");
             overlay.style.opacity = "0";
@@ -663,6 +775,11 @@
                     selectedLineage = btn.dataset.val;
                     populateMarkers();
                     document.getElementById("infoPanel").style.display = "none";
+
+                    if (window.innerWidth <= 768) {
+                        document.getElementById("sidebar").classList.remove("open");
+                        document.getElementById("mapBackdrop").style.display = "none";
+                    }
                 });
             });
 
@@ -673,6 +790,11 @@
                     selectedGender = btn.dataset.val;
                     populateMarkers();
                     document.getElementById("infoPanel").style.display = "none";
+
+                    if (window.innerWidth <= 768) {
+                        document.getElementById("sidebar").classList.remove("open");
+                        document.getElementById("mapBackdrop").style.display = "none";
+                    }
                 });
             });
         });

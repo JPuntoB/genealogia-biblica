@@ -80,11 +80,6 @@
             z-index: 1;
         }
 
-        /* Hatching background texture for nodes shadow */
-        .hatching-pattern {
-            background-image: repeating-linear-gradient(45deg, var(--border) 0, var(--border) 1px, transparent 0, transparent 5px);
-        }
-
         /* Loading spinner */
         #loadingOverlay {
             position: fixed; inset: 0; background: var(--bg);
@@ -156,6 +151,7 @@
             padding: 2px 6px; color: var(--text);
             background: var(--surface-raised); border: 1px solid var(--border);
             border-radius: var(--radius-sm); outline: none; cursor: pointer;
+            width: 100%;
         }
 
         /* Custom Skeuo Slider */
@@ -178,13 +174,56 @@
             box-shadow: 1px 1px 0px var(--border);
         }
 
-        .hint {
-            font-size: 11px; color: var(--subtle);
-            display: flex; align-items: center; gap: 5px;
-            text-transform: uppercase;
-            font-weight: 600;
+        /* Responsive Layout Structures */
+        .settings-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        .hint svg { width: 12px; height: 12px; fill: currentColor; }
+        .topbar-nav-links {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        /* Mobile controls buttons */
+        .menu-toggle, .settings-toggle {
+            display: none;
+            background: var(--surface-raised);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            padding: 6px;
+            color: var(--text);
+            box-shadow: 1.5px 1.5px 0px var(--border);
+        }
+        .menu-toggle svg, .settings-toggle svg { width: 18px; height: 18px; fill: currentColor; display: block; }
+        .menu-toggle:active, .settings-toggle:active { transform: translate(1px, 1px); box-shadow: none; }
+
+        /* Slidedown navigation and settings */
+        .nav-overlay {
+            display: none;
+            position: absolute;
+            top: 52px; left: 0; right: 0;
+            background: var(--surface);
+            border-bottom: 2px solid var(--border);
+            z-index: 100;
+            flex-direction: column;
+            padding: 16px;
+            gap: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .settings-drawer {
+            display: none;
+            position: absolute;
+            top: 52px; left: 0; right: 0;
+            background: var(--surface);
+            border-bottom: 2px solid var(--border);
+            z-index: 90;
+            flex-direction: column;
+            padding: 16px;
+            gap: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
 
         /* ── Canvas viewport ──────────────────────────────────── */
         .viewport {
@@ -252,7 +291,6 @@
         .tree-node.m { background: var(--m-node); border-color: var(--m-border); }
         .tree-node.f { background: var(--f-node); border-color: var(--f-border); }
         
-        /* Node selected / expanded */
         .tree-node.expanded, .tree-node.highlighted {
             transform: translate(2px, 2px);
             box-shadow: 1px 1px 0px var(--border);
@@ -264,7 +302,6 @@
         .node-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; border: 1.5px solid var(--border); }
         .node-label { font-size: 12.5px; font-weight: 700; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* Collapse toggle */
         .toggle-btn {
             position: absolute; bottom: -10px; left: 50%;
             transform: translateX(-50%);
@@ -358,6 +395,28 @@
         [data-theme="dark"] .minimap-viewport {
             fill: rgba(255,255,255,0.04);
         }
+
+        /* ── Mobile adjustments ────────────────────────────── */
+        @media (max-width: 768px) {
+            .settings-bar { display: none; }
+            .topbar-nav-links { display: none; }
+            .menu-toggle, .settings-toggle { display: block; }
+            
+            /* Show drawer if open */
+            .settings-drawer.open { display: flex; }
+            .nav-overlay.open { display: flex; }
+
+            .minimap-container {
+                width: 120px;
+                height: 80px;
+                bottom: 12px;
+                right: 12px;
+            }
+            .tree-node.expanded {
+                min-width: 200px;
+                max-width: 240px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -373,14 +432,71 @@
 
     <!-- Top bar -->
     <header class="topbar">
+        <button class="menu-toggle" id="menuToggle" aria-label="Menu">
+            <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        </button>
         <div class="topbar-brand">
             <div class="topbar-brand-dot"></div>
             Árbol Jerárquico
         </div>
         
+        <div class="topbar-sep"></div>
+
+        <!-- Inline Settings for Desktop -->
+        <div class="settings-bar">
+            <div class="control-group">
+                <label>Linaje Raíz</label>
+                <select class="root-select" id="rootSelect">
+                    <option value="Adam">Adán — Patriarcas</option>
+                    <option value="Noé">Noé — Diluvio y Naciones</option>
+                    <option value="Abraham">Abraham — Linaje de la fe</option>
+                    <option value="Israel">Israel — Las 12 Tribus</option>
+                    <option value="David">David — Línea de Judá</option>
+                    <option value="Saúl">Saúl — Línea de Benjamín</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Profundidad</label>
+                <input type="range" class="range-slider" id="depthSlider" min="1" max="8" value="5">
+                <span id="depthVal" style="font-family:monospace; min-width:10px;">5</span>
+            </div>
+
+            <button class="topbar-btn" id="btnAntepasados">Antepasados</button>
+            <button class="topbar-btn" id="btnExport">Exportar PNG</button>
+        </div>
+
+        <button class="settings-toggle" id="settingsToggle" aria-label="Ajustes">
+            <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+        </button>
+
+        <div class="topbar-nav-links">
+            <a href="index.html" class="topbar-btn">Inicio</a>
+            <a href="visor_genealogia.html" class="topbar-btn">Fichas</a>
+            <a href="grafo_relaciones.html" class="topbar-btn">Grafo</a>
+            <a href="mapa_geografico.html" class="topbar-btn">Mapa</a>
+        </div>
+
+        <button class="topbar-btn" id="themeToggle">
+            <svg id="sunIcon" style="display:none" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3zm0-11c-.55 0-1-.45-1-1V2c0-.55.45-1 1-1s1 .45 1 1v1c0 .55-.45 1-1 1zm0 16c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1s1-.45 1-1v-1c0-.55-.45-1-1-1zm8-8c0-.55-.45-1-1-1h-1c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zM6 12c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zm11.66-5.66l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zm-11.31 11.3l-.71.71c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0l.71-.71c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0zm11.31.01l-.71.71c-.39-.39-1.02-.39-1.41 0l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zM6.35 6.34l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41z"/></svg>
+            <svg id="moonIcon" viewBox="0 0 24 24"><path d="M12.3 22h-.1c-5.5 0-10-4.5-10-10 0-4.8 3.5-8.9 8.3-9.7.6-.1 1.1.4 1 1-.4 2.4.4 4.9 2.1 6.6 1.7 1.7 4.2 2.5 6.6 2.1.6-.1 1.1.4 1 1-.8 4.8-4.9 8.3-9.7 8.3z"/></svg>
+            Tema
+        </button>
+    </header>
+
+    <!-- Mobile Navigation Overlay -->
+    <div class="nav-overlay" id="navOverlay">
+        <a href="index.html" class="topbar-btn">Inicio</a>
+        <a href="visor_genealogia.html" class="topbar-btn">Fichas</a>
+        <a href="grafo_relaciones.html" class="topbar-btn">Grafo</a>
+        <a href="mapa_geografico.html" class="topbar-btn">Mapa</a>
+    </div>
+
+    <!-- Mobile Settings Slidedown Panel -->
+    <div class="settings-drawer" id="settingsDrawer">
         <div class="control-group">
             <label>Linaje Raíz</label>
-            <select class="root-select" id="rootSelect">
+            <select class="root-select" id="compRootSelect">
                 <option value="Adam">Adán — Patriarcas</option>
                 <option value="Noé">Noé — Diluvio y Naciones</option>
                 <option value="Abraham">Abraham — Linaje de la fe</option>
@@ -390,28 +506,19 @@
             </select>
         </div>
 
-        <div class="control-group">
+        <div class="control-group" style="justify-content: space-between;">
             <label>Profundidad</label>
-            <input type="range" class="range-slider" id="depthSlider" min="1" max="8" value="5">
-            <span id="depthVal" style="font-family:monospace; min-width:10px;">5</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <input type="range" class="range-slider" id="compDepthSlider" min="1" max="8" value="5">
+                <span id="compDepthVal" style="font-family:monospace;">5</span>
+            </div>
         </div>
 
-        <button class="topbar-btn" id="btnAntepasados">Antepasados</button>
-        <button class="topbar-btn" id="btnExport">Exportar PNG</button>
-
-        <div class="topbar-sep"></div>
-
-        <a href="index.html" class="topbar-btn">Inicio</a>
-        <a href="visor_genealogia.html" class="topbar-btn">Fichas</a>
-        <a href="grafo_relaciones.html" class="topbar-btn">Grafo</a>
-        <a href="mapa_geografico.html" class="topbar-btn">Mapa</a>
-
-        <button class="topbar-btn" id="themeToggle">
-            <svg id="sunIcon" style="display:none" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3zm0-11c-.55 0-1-.45-1-1V2c0-.55.45-1 1-1s1 .45 1 1v1c0 .55-.45 1-1 1zm0 16c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1s1-.45 1-1v-1c0-.55-.45-1-1-1zm8-8c0-.55-.45-1-1-1h-1c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zM6 12c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zm11.66-5.66l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zm-11.31 11.3l-.71.71c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0l.71-.71c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0zm11.31.01l-.71.71c-.39-.39-1.02-.39-1.41 0l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zM6.35 6.34l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41z"/></svg>
-            <svg id="moonIcon" viewBox="0 0 24 24"><path d="M12.3 22h-.1c-5.5 0-10-4.5-10-10 0-4.8 3.5-8.9 8.3-9.7.6-.1 1.1.4 1 1-.4 2.4.4 4.9 2.1 6.6 1.7 1.7 4.2 2.5 6.6 2.1.6-.1 1.1.4 1 1-.8 4.8-4.9 8.3-9.7 8.3z"/></svg>
-            Tema
-        </button>
-    </header>
+        <div style="display:flex; gap:8px;">
+            <button class="topbar-btn" id="compBtnAntepasados" style="flex:1; justify-content:center;">Antepasados</button>
+            <button class="topbar-btn" id="compBtnExport" style="flex:1; justify-content:center;">Exportar PNG</button>
+        </div>
+    </div>
 
     <!-- Viewport -->
     <div class="viewport" id="viewport">
@@ -444,7 +551,7 @@
             "Set":  { lugar:"Fuera del Edén", significado:"Del hebreo «שֵׁת» (Sheth), «sustituto».", cruzada:"1 Crónicas 1 [Cruces: Set: Génesis 4:25-26, 5:3-8]", adicional:"Tercer hijo de Adán y Eva. De su línea desciende Noé." },
             "Noé":  { lugar:"Mesopotamia", significado:"Del hebreo «נֹחַ» (Noach), «descanso».", cruzada:"1 Crónicas 1 [Cruces: Noé: Génesis 5:28-32, caps. 6-9]", adicional:"Construyó el arca y salvó a su familia del Diluvio." },
             "Abraham": { lugar:"Ur de los Caldeos", significado:"Del hebreo «אַבְrָהָם» (Avraham), «padre de multitudes».", cruzada:"1 Crónicas 1 [Cruces: Abraham: Génesis 11:26-32, caps. 12-25]", adicional:"Patriarca de la fe." },
-            "Israel": { lugar:"Padan-aram", significado:"Del hebreo «יִשְׂרָאֵל» (Yisrael), «el que lucha con Dios».", cruzada:"1 Crónicas 2 [Cruces: Israel: Génesis 25-35, 46-50]", adicional:"Hijo de Isaac. Padre de las 12 tribus." },
+            "Israel": { lugar:"Padan-aram", significado:"Del hebreo «יִשְׂרָאֵL» (Yisrael), «el que lucha con Dios».", cruzada:"1 Crónicas 2 [Cruces: Israel: Génesis 25-35, 46-50]", adicional:"Hijo de Isaac. Padre de las 12 tribus." },
             "David": { lugar:"Belén", significado:"Del hebreo «דָּוִד» (David), «amado».", cruzada:"1 Crónicas 3 [Cruces: David: 1 Samuel 16-31; 2 Samuel]", adicional:"Segundo rey de Israel. Recibió la promesa mesiánica." },
             "Salomón": { lugar:"Jerusalén", significado:"Del hebreo «שְׁלֹmֹה» (Shlomoh), «pacífico».", cruzada:"1 Crónicas 3 [Cruces: Salomón: 1 Reyes 1-11]", adicional:"Hijo de David. Edificó el Primer Templo de Jerusalén." }
         };
@@ -497,7 +604,6 @@
             return null;
         }
 
-        // Descendant representation
         function buildTreeData(nodeName, maxDepth=5, depth=0, visited=new Set()) {
             if (visited.has(nodeName) || depth > maxDepth) return null;
             visited.add(nodeName);
@@ -509,7 +615,6 @@
             return { name:p.name, gender:p.gender, children: kids.map(c=>buildTreeData(c.name,maxDepth,depth+1,visited)).filter(Boolean) };
         }
 
-        // Ancestor Mode representation
         function buildAncestorData(nodeName, maxDepth=5, depth=0, visited=new Set()) {
             if (visited.has(nodeName) || depth > maxDepth) return null;
             visited.add(nodeName);
@@ -527,7 +632,6 @@
             };
         }
 
-        // Hover tooltip debouncing
         let hoverTimeout;
         const tooltip = document.getElementById("hoverTooltip");
 
@@ -552,7 +656,6 @@
             tooltip.style.display = "none";
         }
 
-        // Center view on specific node
         function centerOnNode(nodeDiv) {
             const vp = document.getElementById("viewport").getBoundingClientRect();
             const canvas = document.getElementById("canvas");
@@ -580,7 +683,6 @@
                 </div>
             `;
 
-            // Hover events
             nodeDiv.addEventListener("mouseenter", e => showTooltip(e, node.name));
             nodeDiv.addEventListener("mousemove", e => {
                 tooltip.style.left = `${e.pageX + 12}px`;
@@ -588,7 +690,6 @@
             });
             nodeDiv.addEventListener("mouseleave", hideTooltip);
 
-            // Click → expand in-place
             nodeDiv.onclick = e => {
                 const isOpen = nodeDiv.classList.contains("expanded");
                 document.querySelectorAll(".tree-node").forEach(n => {
@@ -683,7 +784,6 @@
             setTimeout(updateMinimap, 200);
         }
 
-        // ── Pan & zoom ─────────────────────────────────────────────
         let scale = 0.82, tx = 0, ty = 0, dragging = false, sx = 0, sy = 0;
 
         function applyTransform() {
@@ -695,7 +795,7 @@
             const vp = document.getElementById("viewport");
             const cv = document.getElementById("canvas");
             scale = 0.82;
-            tx = (vp.clientWidth / 2) - (cv.scrollWidth * scale / 2) + 160;
+            tx = (vp.clientWidth / 2) - (cv.scrollWidth * scale / 2) + 20;
             ty = 60;
             applyTransform();
         }
@@ -719,7 +819,6 @@
                 applyTransform();
             }, { passive: false });
 
-            // Touch events (Pinch-to-zoom & pan)
             let touchStartDist = 0;
             let touchStartScale = 1;
             vp.addEventListener("touchstart", e => {
@@ -745,7 +844,6 @@
             vp.addEventListener("touchend", () => dragging = false);
         }
 
-        // ── Minimap SVG Rendering ─────────────────────────────────
         function updateMinimap() {
             const nodesContainer = document.getElementById("minimapNodes");
             nodesContainer.innerHTML = "";
@@ -765,12 +863,13 @@
                 if (y < minY) minY = y; if (y > maxY) maxY = y;
             });
 
-            // Map spacing
-            const padding = 50;
+            const padding = 20;
+            const minimapWidth = window.innerWidth <= 768 ? 120 : 160;
+            const minimapHeight = window.innerWidth <= 768 ? 80 : 100;
             const boundsW = (maxX - minX) || 1;
             const boundsH = (maxY - minY) || 1;
-            const scaleX = (160 - padding) / boundsW;
-            const scaleY = (100 - padding) / boundsH;
+            const scaleX = (minimapWidth - padding) / boundsW;
+            const scaleY = (minimapHeight - padding) / boundsH;
             const mapScale = Math.min(scaleX, scaleY);
 
             nodesData.forEach(n => {
@@ -808,8 +907,8 @@
 
             rect.setAttribute("x", x);
             rect.setAttribute("y", y);
-            rect.setAttribute("width", Math.max(10, width));
-            rect.setAttribute("height", Math.max(10, height));
+            rect.setAttribute("width", Math.max(8, width));
+            rect.setAttribute("height", Math.max(8, height));
         }
 
         function selectNodeInTree(name) {
@@ -836,29 +935,36 @@
         }
 
         function setupControls() {
-            document.getElementById("rootSelect").addEventListener("change", e => {
+            const handleRootChange = e => {
                 selectedRootName = e.target.value;
+                document.getElementById("rootSelect").value = selectedRootName;
+                document.getElementById("compRootSelect").value = selectedRootName;
                 loadTree(selectedRootName);
-            });
+            };
+            document.getElementById("rootSelect").addEventListener("change", handleRootChange);
+            document.getElementById("compRootSelect").addEventListener("change", handleRootChange);
 
-            const slider = document.getElementById("depthSlider");
-            const valDisplay = document.getElementById("depthVal");
-            slider.addEventListener("input", e => {
+            const handleDepthInput = e => {
                 currentMaxDepth = parseInt(e.target.value);
-                valDisplay.textContent = currentMaxDepth;
+                document.getElementById("depthVal").textContent = currentMaxDepth;
+                document.getElementById("compDepthVal").textContent = currentMaxDepth;
+                document.getElementById("depthSlider").value = currentMaxDepth;
+                document.getElementById("compDepthSlider").value = currentMaxDepth;
                 loadTree(selectedRootName);
-            });
+            };
+            document.getElementById("depthSlider").addEventListener("input", handleDepthInput);
+            document.getElementById("compDepthSlider").addEventListener("input", handleDepthInput);
 
-            // Antepasados button toggle
-            const antepasadosBtn = document.getElementById("btnAntepasados");
-            antepasadosBtn.addEventListener("click", () => {
+            const handleAntepasadosToggle = () => {
                 ancestorMode = !ancestorMode;
-                antepasadosBtn.classList.toggle("active", ancestorMode);
+                document.getElementById("btnAntepasados").classList.toggle("active", ancestorMode);
+                document.getElementById("compBtnAntepasados").classList.toggle("active", ancestorMode);
                 loadTree(selectedRootName);
-            });
+            };
+            document.getElementById("btnAntepasados").addEventListener("click", handleAntepasadosToggle);
+            document.getElementById("compBtnAntepasados").addEventListener("click", handleAntepasadosToggle);
 
-            // Export PNG
-            document.getElementById("btnExport").addEventListener("click", () => {
+            const handlePngExport = () => {
                 const canvasEl = document.getElementById("canvas");
                 html2canvas(canvasEl, {
                     backgroundColor: getComputedStyle(document.documentElement).getPropertyValue("--bg"),
@@ -870,6 +976,32 @@
                     link.href = canvas.toDataURL();
                     link.click();
                 });
+            };
+            document.getElementById("btnExport").addEventListener("click", handlePngExport);
+            document.getElementById("compBtnExport").addEventListener("click", handlePngExport);
+        }
+
+        function setupResponsiveMenus() {
+            const menuToggle = document.getElementById("menuToggle");
+            const settingsToggle = document.getElementById("settingsToggle");
+            const navOverlay = document.getElementById("navOverlay");
+            const settingsDrawer = document.getElementById("settingsDrawer");
+
+            menuToggle.addEventListener("click", e => {
+                navOverlay.classList.toggle("open");
+                settingsDrawer.classList.remove("open");
+                e.stopPropagation();
+            });
+
+            settingsToggle.addEventListener("click", e => {
+                settingsDrawer.classList.toggle("open");
+                navOverlay.classList.remove("open");
+                e.stopPropagation();
+            });
+
+            document.addEventListener("click", () => {
+                navOverlay.classList.remove("open");
+                settingsDrawer.classList.remove("open");
             });
         }
 
@@ -877,23 +1009,25 @@
             buildRelationshipMap();
             setupPanZoom();
             setupControls();
+            setupResponsiveMenus();
             setupTheme();
             loadTree("Adam");
 
             const params = new URLSearchParams(window.location.search);
             const initRoot = params.get("root"), highlight = params.get("highlight");
             if (initRoot && people[initRoot]) {
-                document.getElementById("rootSelect").value = initRoot;
                 selectedRootName = initRoot;
+                document.getElementById("rootSelect").value = initRoot;
+                document.getElementById("compRootSelect").value = initRoot;
                 loadTree(initRoot);
             }
             if (highlight) setTimeout(() => selectNodeInTree(highlight), 350);
 
-            // Hide overlay spinner
             const overlay = document.getElementById("loadingOverlay");
             overlay.style.opacity = "0";
             setTimeout(() => overlay.style.display = "none", 300);
         });
+        window.addEventListener("resize", updateMinimap);
     </script>
 </body>
 </html>

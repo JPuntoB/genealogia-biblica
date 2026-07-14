@@ -991,6 +991,53 @@ def run_pipeline(show_stats=False, validate=False):
     print(f"Añadidos {len(manual_records)} registros manuales.")
     print(f"Total final: {len(records)} registros genealógicos.")
 
+    # 5. Inyectar correcciones web si existe correcciones.json
+    import os
+    correcciones_file = "correcciones.json"
+    if os.path.exists(correcciones_file):
+        try:
+            with open(correcciones_file, "r", encoding="utf-8") as jf:
+                corr_data = json.load(jf)
+                
+            nuevos_count = 0
+            if "nuevos" in corr_data and isinstance(corr_data["nuevos"], list):
+                for new_rec in corr_data["nuevos"]:
+                    full_rec = {f: "" for f in fieldnames}
+                    full_rec.update(new_rec)
+                    records.append(full_rec)
+                    nuevos_count += 1
+                    
+            mods_count = 0
+            if "modificaciones" in corr_data and isinstance(corr_data["modificaciones"], dict):
+                for record in records:
+                    child = record.get("Hijos", "").strip()
+                    if child in corr_data["modificaciones"]:
+                        mods = corr_data["modificaciones"][child]
+                        
+                        key_mapping = {
+                            "meaning": "Significado del Nombre (Padre)",
+                            "birthPlace": "Lugar de nacimiento",
+                            "notes": "Notas",
+                            "gender": "Género Hijos",
+                            "father": "Padre",
+                            "mother": "Madre"
+                        }
+                        
+                        for js_key, py_key in key_mapping.items():
+                            if js_key in mods and mods[js_key] is not None:
+                                record[py_key] = mods[js_key]
+                                
+                        if "notes" in mods and mods["notes"] is not None:
+                            record["Notas"] = mods["notes"]
+                            record["Información Adicional"] = f"Sobre el hijo ({child}): {mods['notes']}"
+                            
+                        mods_count += 1
+                        
+            print(f"Inyectadas correcciones desde '{correcciones_file}': {nuevos_count} personajes nuevos, {mods_count} modificaciones.")
+            print(f"Nuevo total final: {len(records)} registros genealógicos.")
+        except Exception as ce:
+            print(f"⚠️  Error cargando o aplicando '{correcciones_file}': {ce}")
+
     # Estadísticas opcionales
     if show_stats:
         print_statistics(records)

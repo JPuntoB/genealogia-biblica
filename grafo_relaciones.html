@@ -101,7 +101,7 @@
             background: var(--surface);
             border-bottom: 2px solid var(--border);
             flex-shrink: 0;
-            z-index: 10;
+            z-index: 50;
         }
         .topbar-brand {
             font-size: 13px; font-weight: 700; color: var(--text);
@@ -121,6 +121,39 @@
         }
         .topbar-btn:active, .topbar-btn.active { transform: translate(2px, 2px); box-shadow: none; }
         .topbar-btn svg { width: 13px; height: 13px; fill: currentColor; }
+
+        .topbar-nav-links {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        /* Mobile controls buttons */
+        .menu-toggle, .filter-toggle {
+            display: none;
+            background: var(--surface-raised);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            padding: 6px;
+            color: var(--text);
+            box-shadow: 1.5px 1.5px 0px var(--border);
+        }
+        .menu-toggle svg, .filter-toggle svg { width: 18px; height: 18px; fill: currentColor; display: block; }
+        .menu-toggle:active, .filter-toggle:active { transform: translate(1px, 1px); box-shadow: none; }
+
+        /* Slidedown navigation */
+        .nav-overlay {
+            display: none;
+            position: absolute;
+            top: 52px; left: 0; right: 0;
+            background: var(--surface);
+            border-bottom: 2px solid var(--border);
+            z-index: 100;
+            flex-direction: column;
+            padding: 16px;
+            gap: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
 
         /* ── Workspace ── */
         .workspace {
@@ -250,6 +283,7 @@
             background: var(--surface-raised);
             box-shadow: var(--shadow-block);
             margin: 0 auto;
+            flex-shrink: 0;
         }
         .avatar-placeholder {
             width: 100%; height: 100%;
@@ -262,6 +296,7 @@
             border: 1px solid var(--border);
             box-shadow: 2px 2px 0px var(--border);
             background: var(--surface-raised);
+            flex-shrink: 0;
         }
         .meta-row {
             display: flex;
@@ -309,12 +344,54 @@
             width: 10px; height: 10px; border-radius: 50%;
             border: 1.5px solid var(--border);
         }
+
+        /* ── Mobile Layout Fixes ─────────────────────────────── */
+        @media (max-width: 768px) {
+            .workspace {
+                grid-template-columns: 1fr;
+            }
+            .sidebar-left {
+                position: absolute;
+                left: 0; top: 0; bottom: 0; width: 260px;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                z-index: 100;
+                box-shadow: 4px 0 0 var(--border);
+            }
+            .sidebar-left.open {
+                transform: translateX(0);
+            }
+            .sidebar-right {
+                position: absolute;
+                right: 0; top: 0; bottom: 0; width: 280px;
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+                z-index: 100;
+                box-shadow: -4px 0 0 var(--border);
+            }
+            .sidebar-right.open {
+                transform: translateX(0);
+            }
+            
+            .menu-toggle, .filter-toggle {
+                display: block;
+            }
+            .topbar-nav-links {
+                display: none;
+            }
+            .nav-overlay.open {
+                display: flex;
+            }
+        }
     </style>
 </head>
 <body>
 
     <!-- Dotted Grid background -->
     <div class="dotted-grid"></div>
+
+    <!-- Backdrop overlay for mobile sidebars -->
+    <div id="graphBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:90;"></div>
 
     <!-- Spinner -->
     <div id="loadingOverlay">
@@ -324,16 +401,26 @@
 
     <!-- Topbar -->
     <header class="topbar">
+        <button class="menu-toggle" id="menuToggle" aria-label="Menu">
+            <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        </button>
+        <button class="filter-toggle" id="filterToggle" aria-label="Filtros">
+            <svg viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
+        </button>
+
         <div class="topbar-brand">
             <div class="topbar-brand-dot"></div>
             Grafo de Relaciones
         </div>
-        <span style="font-size:11px;color:var(--subtle);font-family:monospace;">[d3_force_network]</span>
+
         <div class="topbar-sep"></div>
-        <a href="index.html" class="topbar-btn">Inicio</a>
-        <a href="visor_genealogia.html" class="topbar-btn">Fichas</a>
-        <a href="arbol_genealogico.html" class="topbar-btn">Árbol gráfico</a>
-        <a href="mapa_geografico.html" class="topbar-btn">Mapa</a>
+
+        <div class="topbar-nav-links">
+            <a href="index.html" class="topbar-btn">Inicio</a>
+            <a href="visor_genealogia.html" class="topbar-btn">Fichas</a>
+            <a href="arbol_genealogico.html" class="topbar-btn">Árbol gráfico</a>
+            <a href="mapa_geografico.html" class="topbar-btn">Mapa</a>
+        </div>
 
         <button class="topbar-btn" id="themeToggle">
             <svg id="sunIcon" style="display:none" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3zm0-11c-.55 0-1-.45-1-1V2c0-.55.45-1 1-1s1 .45 1 1v1c0 .55-.45 1-1 1zm0 16c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1s1-.45 1-1v-1c0-.55-.45-1-1-1zm8-8c0-.55-.45-1-1-1h-1c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zM6 12c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zm11.66-5.66l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zm-11.31 11.3l-.71.71c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0l.71-.71c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0zm11.31.01l-.71.71c-.39-.39-1.02-.39-1.41 0l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zM6.35 6.34l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41z"/></svg>
@@ -342,11 +429,19 @@
         </button>
     </header>
 
+    <!-- Mobile Navigation Menu -->
+    <div class="nav-overlay" id="navOverlay">
+        <a href="index.html" class="topbar-btn">Inicio</a>
+        <a href="visor_genealogia.html" class="topbar-btn">Fichas</a>
+        <a href="arbol_genealogico.html" class="topbar-btn">Árbol gráfico</a>
+        <a href="mapa_geografico.html" class="topbar-btn">Mapa</a>
+    </div>
+
     <!-- Workspace -->
     <div class="workspace">
         
-        <!-- Left Sidebar -->
-        <aside class="sidebar-left">
+        <!-- Left Sidebar (Filters) -->
+        <aside class="sidebar-left" id="sidebarLeft">
             <div class="sidebar-search-wrap">
                 <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                 <input type="text" class="sidebar-search" id="nodeSearch" placeholder="Buscar personaje…">
@@ -404,11 +499,16 @@
 
         <!-- Right Sidebar (Ficha) -->
         <aside class="sidebar-right" id="profileSidebar" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid var(--border); padding-bottom:8px; margin-bottom:8px;">
+                <h3 style="font-size:11.5px; font-weight:700; color:var(--subtle); text-transform:uppercase;">Detalle de nodo</h3>
+                <button onclick="closeProfileSidebar()" style="background:none; border:none; cursor:pointer; font-size:20px; font-weight:700; color:var(--subtle); line-height:1;">×</button>
+            </div>
+            
             <div class="avatar-block">
                 <div class="avatar-placeholder" id="valAvatarPlaceholder">?</div>
             </div>
             
-            <div style="border-bottom: 2px solid var(--border); padding-bottom:8px;">
+            <div style="border-bottom: 1px dashed var(--border-subtle); padding-bottom:8px;">
                 <h2 id="valName" style="font-size:18px; font-weight:800; text-transform:uppercase;"></h2>
                 <p id="valMeaning" style="font-size:11px; font-style:italic; color:var(--muted); margin-top:2px;"></p>
             </div>
@@ -421,7 +521,7 @@
             </div>
 
             <span class="section-label">Reseña histórica</span>
-            <div class="notes-block">
+            <div class="notes-block" style="flex:1; overflow-y:auto;">
                 <p id="valNotes"></p>
             </div>
 
@@ -491,36 +591,30 @@
             return `linear-gradient(135deg, hsl(${h1},65%,48%) 0%, hsl(${h2},65%,38%) 100%)`;
         }
 
-        // ── D3.js Force graph rendering ──
         let svg, simulation, linkElements, nodeElements;
-        const width = 800, height = 600;
 
         function initGraph() {
             svg = d3.select("#graphSvg");
+            svg.selectAll("*").remove();
             
-            // Add zoom container
             const g = svg.append("g");
             
             svg.call(d3.zoom().on("zoom", (e) => {
                 g.attr("transform", e.transform);
             }));
 
-            // Prepare nodes and links
             const nodes = [];
             const links = [];
             const addedNodes = new Set();
 
             Object.values(people).forEach(p => {
-                // Filter by lineage
                 if (selectedLineage !== "Todos" && !belongsToLineage(p.name, selectedLineage)) return;
                 
                 if (!addedNodes.has(p.name)) {
                     nodes.push({ id: p.name, gender: p.gender, size: p.children.length });
-                    addedNodes.has(p.name);
                     addedNodes.add(p.name);
                 }
 
-                // Parent relations
                 if (p.father && belongsToLineage(p.father, selectedLineage)) {
                     if (!addedNodes.has(p.father)) {
                         const fat = people[p.father];
@@ -530,7 +624,6 @@
                     links.push({ source: p.father, target: p.name, type: "parent" });
                 }
 
-                // Spouses relations
                 if (showSpouses && p.spouses) {
                     p.spouses.forEach(sp => {
                         if (belongsToLineage(sp, selectedLineage)) {
@@ -539,7 +632,6 @@
                                 nodes.push({ id: sp, gender: spouseObj ? spouseObj.gender : "F", size: spouseObj ? spouseObj.children.length : 1 });
                                 addedNodes.add(sp);
                             }
-                            // Add spouse connection (punteado)
                             links.push({ source: p.name, target: sp, type: "spouse" });
                         }
                     });
@@ -549,17 +641,12 @@
             document.getElementById("nodesCount").textContent = nodes.length;
             document.getElementById("linksCount").textContent = links.length;
 
-            // Clear previous svg groups
-            g.selectAll("*").remove();
-
-            // Force simulation setup
             simulation = d3.forceSimulation(nodes)
                 .force("link", d3.forceLink(links).id(d => d.id).distance(80))
                 .force("charge", d3.forceManyBody().strength(-200))
                 .force("center", d3.forceCenter(svg.node().clientWidth / 2, svg.node().clientHeight / 2))
                 .force("collide", d3.forceCollide().radius(d => Math.sqrt(d.size + 1) * 5 + 6));
 
-            // Link elements (bosquejo monocromo)
             linkElements = g.selectAll(".link")
                 .data(links)
                 .enter().append("line")
@@ -568,7 +655,6 @@
                 .attr("stroke-width", d => d.type === "spouse" ? 1.5 : 1)
                 .attr("stroke-dasharray", d => d.type === "spouse" ? "3,3" : null);
 
-            // Node elements (estilo botón skeuo)
             nodeElements = g.selectAll(".node")
                 .data(nodes)
                 .enter().append("g")
@@ -584,7 +670,7 @@
                 .attr("stroke", "var(--border)")
                 .attr("stroke-width", 2)
                 .attr("cursor", "pointer")
-                .on("click", (e, d) => selectNode(d.id))
+                .on("click", (e, d) => { selectNode(d.id); e.stopPropagation(); })
                 .on("mouseover", showTooltip)
                 .on("mouseleave", hideTooltip);
 
@@ -610,7 +696,6 @@
             });
         }
 
-        // Drag handlers
         function dragstarted(e, d) {
             if (!e.active) simulation.alphaTarget(0.3).restart();
             d.fx = d.x; d.fy = d.y;
@@ -623,13 +708,17 @@
             d.fx = null; d.fy = null;
         }
 
-        // Ficha selection
         function selectNode(name) {
             const p = people[name];
             if (!p) return;
 
             const sidebar = document.getElementById("profileSidebar");
+            sidebar.classList.add("open");
             sidebar.style.display = "flex";
+
+            if (window.innerWidth <= 768) {
+                document.getElementById("graphBackdrop").style.display = "block";
+            }
 
             document.getElementById("valName").textContent = p.name;
             document.getElementById("valMeaning").textContent = p.meaning || "Significado no registrado.";
@@ -654,13 +743,23 @@
 
             document.getElementById("fullProfileBtn").href = `visor_genealogia.html?name=${encodeURIComponent(p.name)}`;
 
-            // Highlight circle in graph SVG
             d3.selectAll("circle").attr("stroke-width", 2);
             d3.selectAll("circle").filter(d => d.id === name)
                 .attr("stroke-width", 4);
         }
 
-        // Hover tooltip logic
+        function closeProfileSidebar() {
+            document.getElementById("profileSidebar").classList.remove("open");
+            document.getElementById("profileSidebar").style.display = "none";
+            
+            if (window.innerWidth <= 768) {
+                // If filters is also closed, hide backdrop
+                if (!document.getElementById("sidebarLeft").classList.contains("open")) {
+                    document.getElementById("graphBackdrop").style.display = "none";
+                }
+            }
+        }
+
         const tooltipEl = document.getElementById("hoverTooltip");
         function showTooltip(e, d) {
             tooltipEl.innerHTML = `<strong>${d.id}</strong><br>${d.gender === "F" ? "Femenino" : "Masculino"}<br>Descendientes: ${d.size}`;
@@ -687,12 +786,53 @@
             });
         }
 
+        function setupResponsive() {
+            const menuToggle = document.getElementById("menuToggle");
+            const filterToggle = document.getElementById("filterToggle");
+            const navOverlay = document.getElementById("navOverlay");
+            const sidebarLeft = document.getElementById("sidebarLeft");
+            const sidebarRight = document.getElementById("profileSidebar");
+            const backdrop = document.getElementById("graphBackdrop");
+
+            menuToggle.addEventListener("click", e => {
+                navOverlay.classList.toggle("open");
+                sidebarLeft.classList.remove("open");
+                sidebarRight.classList.remove("open");
+                backdrop.style.display = "none";
+                e.stopPropagation();
+            });
+
+            filterToggle.addEventListener("click", e => {
+                const isOpen = sidebarLeft.classList.contains("open");
+                if (isOpen) {
+                    sidebarLeft.classList.remove("open");
+                    backdrop.style.display = "none";
+                } else {
+                    sidebarLeft.classList.add("open");
+                    sidebarRight.classList.remove("open");
+                    navOverlay.classList.remove("open");
+                    backdrop.style.display = "block";
+                }
+                e.stopPropagation();
+            });
+
+            backdrop.addEventListener("click", () => {
+                sidebarLeft.classList.remove("open");
+                sidebarRight.classList.remove("open");
+                backdrop.style.display = "none";
+            });
+
+            document.addEventListener("click", () => {
+                navOverlay.classList.remove("open");
+            });
+        }
+
         window.addEventListener("DOMContentLoaded", () => {
             buildRelationshipMap();
             initGraph();
             setupTheme();
+            setupResponsive();
 
-            // Search filter nodes
             const search = document.getElementById("nodeSearch");
             search.addEventListener("input", e => {
                 const q = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -702,33 +842,39 @@
                 });
             });
 
-            // Pills linaje
             document.querySelectorAll("#lineageFilter .pill").forEach(btn => {
                 btn.addEventListener("click", () => {
                     document.querySelectorAll("#lineageFilter .pill").forEach(b => b.classList.remove("active"));
                     btn.classList.add("active");
                     selectedLineage = btn.dataset.val;
                     initGraph();
+                    
+                    if (window.innerWidth <= 768) {
+                        document.getElementById("sidebarLeft").classList.remove("open");
+                        document.getElementById("graphBackdrop").style.display = "none";
+                    }
                 });
             });
 
-            // Sliders skeuo D3 simulations
             document.getElementById("forceSlider").addEventListener("input", e => {
                 const val = parseInt(e.target.value);
                 simulation.force("charge").strength(val);
                 simulation.alpha(0.3).restart();
             });
 
-            // Toggle spouses connections
             const toggleSp = document.getElementById("toggleSpouses");
             toggleSp.addEventListener("click", () => {
                 showSpouses = !showSpouses;
                 toggleSp.classList.toggle("active", !showSpouses);
                 toggleSp.textContent = showSpouses ? "Mostrar" : "Ocultar";
                 initGraph();
+
+                if (window.innerWidth <= 768) {
+                    document.getElementById("sidebarLeft").classList.remove("open");
+                    document.getElementById("graphBackdrop").style.display = "none";
+                }
             });
 
-            // Hide overlay spinner
             const overlay = document.getElementById("loadingOverlay");
             overlay.style.opacity = "0";
             setTimeout(() => overlay.style.display = "none", 300);

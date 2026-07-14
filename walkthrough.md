@@ -1,6 +1,6 @@
 # Mejoras de la Genealogía Bíblica Interactiva
 
-He completado la implementación de todas las mejoras que planteamos en el plan de diseño, mejorando significativamente la usabilidad, navegación, y añadiendo dos vistas completamente nuevas, junto con un rediseño estético completo al estilo **Neo-Skeuo**.
+He completado la implementación de todas las mejoras que planteamos en el plan de diseño, mejorando significativamente la usabilidad, navegación, y añadiendo dos vistas completamente nuevas, junto con un rediseño estético completo al estilo **Neo-Skeuo**, optimización móvil integral y el nuevo **Sistema de Edición y Creación Híbrido**.
 
 ---
 
@@ -31,32 +31,36 @@ Hemos transformado la identidad visual de la aplicación para dotarla de un aspe
 
 ---
 
-## 🛠️ Cambios Realizados por Archivo
+## 📱 Mejoras de Responsividad y UI/UX Móvil
 
-### 1. 🏠 Página de Inicio Renovada (`index.html`)
-- **Estilo Libreta**: Rediseñada con tarjetas técnicas con doble línea, iconos monocromáticos skeuo y reglas de píxeles marginales estéticas.
-- **Acceso Directo**: 4 tarjetas que reaccionan mecánicamente al pasar el ratón por encima (efecto de traslación).
+Hemos corregido los incidentes en dispositivos móviles en todas las vistas de la aplicación para ofrecer una experiencia fluida y táctil:
 
-### 2. 📇 Visor de Fichas Mejorado (`visor_genealogia.html`)
-- **Fichas e Inset Inputs**: Cajas de búsqueda estilo relieve invertido y fichas de detalle enmarcadas en bordes grabados.
-- **Historial e Interfaz**: Botones mecánicos elevados para navegar por el historial, y panel de comparación con estilo de ficha duplicada.
-- **Línea de Tiempo del Linaje**: Ajustada visualmente como una regla de medición técnica sobre los patriarcas clave.
+1. **Cabeceras Colapsables (Menú Hambuguesa ☰):**
+   * En todas las vistas, las cabeceras se colapsan en móviles tras un botón ☰ que abre un panel desplegable de navegación.
+2. **Apilamiento de Fichas (`visor_genealogia.html`):**
+   * Las columnas de perfiles ahora se apilan de manera vertical (`flex-direction: column`) para optimizar el espacio horizontal.
+3. **Ajustes de Árbol Inteligentes (`arbol_genealogico.html`):**
+   * El selector de raíz y el slider de profundidad se agruparon en un drawer que se abre con un botón de engranaje (⚙️/ajustes). El mini-mapa se reduce a 120x80px en pantallas pequeñas.
+4. **Drawers y Backdrops en el Grafo (`grafo_relaciones.html`):**
+   * Los paneles laterales de filtros y perfiles del grafo de D3 se deslizan sobre la pantalla usando fondos translúcidos (backdrops) táctiles.
+5. **Cajones de Filtros en Mapa (`mapa_geografico.html`):**
+   * La barra lateral de filtros ahora se despliega como cajón de control desde la izquierda, maximizando el área del mapa.
 
-### 3. 🌳 Árbol Genealógico Avanzado (`arbol_genealogico.html`)
-- **Fondo de Ingeniería**: Fondo de cuadrícula punteada interactiva que se mueve con el árbol.
-- **Nodos Técnicos**: Cajas planas monocromas para los nodos de hombres y mujeres, con rebordes sólidos de tinta.
-- **Minimap Blueprint**: Renderizado con bordes dobles simulando un plano de control técnico.
+---
 
-### 4. 🕸️ Nueva Vista: Grafo de Relaciones (`grafo_relaciones.html`)
-- **Red Bosquejada**: Líneas de conexión y enlaces en tinta lavada; nodos de baja saturación con borde negro de 2px.
-- **Tablero de Mandos**: Panel izquierdo con sliders skeuomorphic y pills de control técnico.
+## ✏️ Sistema de Edición y Creación Híbrido
 
-### 5. 🗺️ Nueva Vista: Mapa Geográfico (`mapa_geografico.html`)
-- **Fichas Flotantes**: Ventana de detalles con doble reborde y botones skeuo.
-- **Controles de Mapa**: Los botones clásicos de zoom de Leaflet se integraron a la paleta de papel envejecido y bordes del UI kit.
+Para permitir modificar y añadir perfiles estructurados sin entrar en conflicto con la naturaleza no estructurada de las escrituras de `Ase.txt`, implementamos un pipeline de base de datos relacional de dos capas:
 
-### 6. 🐍 Procesador de Datos Python (`organizar_genealogia.py`)
-- **Salida Limpia**: Eliminados los emojis problemáticos y reemplazados por delimitadores ASCII seguros para evitar excepciones en la codificación de consolas locales.
+### 1. Funcionalidad en el Visor Web (`visor_genealogia.html`):
+* **Botón "Editar Ficha":** Permite cambiar el *Significado*, *Origen*, *Género*, *Padre*, *Madre*, *Cónyuge* y *Reseña histórica* del personaje activo utilizando controles de formulario en tiempo real.
+* **Botón "Crear Personaje":** Abre un modal para crear un nuevo personaje y enlazar sus parentescos de forma manual.
+* **Base de Datos Persistente Local:** Las ediciones y personajes nuevos se almacenan localmente en el navegador (`localStorage`) de manera que las consultas, árboles, grafos D3 y mapas muestran las relaciones actualizadas al instante.
+* **Exportador de JSON:** Descarga un archivo `correcciones.json` con todos los cambios locales.
+
+### 2. Integración en el Pipeline de Datos (`organizar_genealogia.py`):
+* El compilador de Python ahora detecta si existe un archivo `correcciones.json` en la raíz.
+* Mezcla automáticamente los personajes creados y sobreescribe los campos correspondientes de los existentes sobre el reporte general, sincronizando las bases de datos de Excel (`.xlsx`), CSV, TSV y el JS del front-end.
 
 ---
 
@@ -66,5 +70,6 @@ Hemos transformado la identidad visual de la aplicación para dotarla de un aspe
    ```powershell
    python organizar_genealogia.py --stats
    ```
-   *Resultado:* 669 registros procesados, guardados en 5 formatos y 4 ciclos de consistencia detectados y reportados con éxito en consola.
-2. **Coherencia del Tema**: Comprobado el correcto comportamiento de la paleta en modo claro (`#faf6f0`) y oscuro (`#403d39`) a través de las 5 vistas de la aplicación.
+   *Resultado:* 697 registros procesados con éxito.
+2. **Edición y Sincronización**: Creados y editados perfiles en el Visor Web, exportado el archivo `correcciones.json` de forma interactiva y mezclado por el script de Python sin contratiempos.
+3. **Consistencia Visual**: Árboles, grafos y mapas procesan de forma nativa a los nuevos personajes enlazados.
