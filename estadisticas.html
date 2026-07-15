@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genealogía Bíblica · Estadísticas</title>
+    <meta name="description" content="Dashboard interactivo de estadísticas visuales de la genealogía bíblica. Gráficos de distribución por género, linaje, generación y más.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* ── Neo-Skeuo Design tokens ──────────────────────────── */
+        :root {
+            --bg: #faf6f0; --surface: #f4f0e8; --surface-raised: #f7f6f2;
+            --surface-inset: #dedad0; --border: #1a1917; --border-subtle: #7a7870;
+            --text: #1a1917; --muted: #5a5850; --subtle: #8a8880;
+            --accent: #1a1917; --accent-bg: #dedad0;
+            --m-dot: #3b82f6; --f-dot: #e879a0;
+            --radius-sm: 0px; --radius-md: 4px; --shadow-block: 3px 3px 0px var(--border);
+        }
+        [data-theme="dark"] {
+            --bg: #403d39; --surface: #32302d; --surface-raised: #47423b;
+            --surface-inset: #242321; --border: #faf6f0; --border-subtle: #8a8880;
+            --text: #faf6f0; --muted: #b0ada6; --subtle: #6a6860;
+            --accent: #faf6f0; --accent-bg: #242321;
+            --m-dot: #60a5fa; --f-dot: #f472b6;
+            --shadow-block: 3px 3px 0px var(--border);
+        }
+
+        /* ── Reset ────────────────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { height: 100%; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            font-size: 13.5px;
+            line-height: 1.5;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Dotted technical grid background */
+        .dotted-grid {
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(var(--border-subtle) 1px, transparent 1px);
+            background-size: 20px 20px;
+            opacity: 0.08;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Spinner */
+        #loadingOverlay {
+            position: fixed; inset: 0; background: var(--bg);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999; flex-direction: column; gap: 16px;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .spinner {
+            width: 36px; height: 36px;
+            border: 2px solid var(--border); border-top-color: var(--border-subtle);
+            animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Top bar ──────────────────────────────────────────── */
+        .topbar {
+            height: 52px;
+            min-height: 52px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 20px;
+            background: var(--surface);
+            border-bottom: 2px solid var(--border);
+            flex-shrink: 0;
+            z-index: 50;
+        }
+        .topbar-brand {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+        }
+        .topbar-brand-dot {
+            width: 8px; height: 8px;
+            background: var(--text);
+            border: 1px solid var(--bg);
+            border-radius: 50%;
+        }
+        .topbar-brand .brand-subtle {
+            font-weight: 500;
+            color: var(--subtle);
+            font-size: 11px;
+            margin-left: 4px;
+        }
+        .topbar-sep { flex: 1; }
+        .topbar-btn {
+            display: flex; align-items: center; gap: 5px;
+            padding: 5px 12px; font-size: 12px; font-weight: 600;
+            color: var(--text); background: var(--surface-raised);
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+            cursor: pointer; text-decoration: none; font-family: inherit;
+            box-shadow: 2px 2px 0px var(--border);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .topbar-btn:hover { border-color: var(--border); }
+        .topbar-btn:active, .topbar-btn.active {
+            transform: translate(2px, 2px);
+            box-shadow: none;
+        }
+        .topbar-btn svg { width: 13px; height: 13px; fill: currentColor; flex-shrink: 0; }
+        .topbar-nav-links {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        /* Hamburger menu button */
+        .menu-toggle {
+            display: none;
+            background: var(--surface-raised);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            padding: 6px;
+            color: var(--text);
+            box-shadow: 1.5px 1.5px 0px var(--border);
+        }
+        .menu-toggle svg { width: 18px; height: 18px; fill: currentColor; display: block; }
+        .menu-toggle:active { transform: translate(1px, 1px); box-shadow: none; }
+
+        /* Slidedown navigation */
+        .nav-overlay {
+            display: none;
+            position: absolute;
+            top: 52px; left: 0; right: 0;
+            background: var(--surface);
+            border-bottom: 2px solid var(--border);
+            z-index: 100;
+            flex-direction: column;
+            padding: 16px;
+            gap: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        /* ── Main scrollable area ─────────────────────────────── */
+        .main-scroll {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+            z-index: 5;
+        }
+        .main-scroll::-webkit-scrollbar { width: 8px; }
+        .main-scroll::-webkit-scrollbar-track { background: var(--surface-inset); }
+        .main-scroll::-webkit-scrollbar-thumb {
+            background: var(--border-subtle);
+            border: 1px solid var(--border);
+        }
+
+        /* ── Dashboard grid ───────────────────────────────────── */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+            padding: 24px;
+        }
+
+        /* ── KPI row ──────────────────────────────────────────── */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            padding: 24px 24px 0;
+        }
+
+        /* ── Stat Cards (Neo-Skeuo style) ─────────────────────── */
+        .stat-card {
+            border: 3px double var(--border);
+            background: var(--surface);
+            box-shadow: var(--shadow-block);
+            padding: 20px;
+            position: relative;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .stat-card:hover {
+            transform: translate(-1px, -1px);
+            box-shadow: 4px 4px 0px var(--border);
+        }
+        .stat-card-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--subtle);
+            letter-spacing: 0.8px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .stat-card-title::before {
+            content: '';
+            width: 6px; height: 6px;
+            background: var(--text);
+            display: inline-block;
+        }
+
+        /* KPI card specifics */
+        .kpi-card {
+            text-align: center;
+            padding: 20px 16px;
+        }
+        .kpi-card .kpi-value {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--text);
+            line-height: 1;
+            margin: 8px 0 4px;
+            font-variant-numeric: tabular-nums;
+        }
+        .kpi-card .kpi-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .kpi-card .kpi-icon {
+            width: 32px; height: 32px;
+            margin: 0 auto 4px;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--surface-inset);
+            border: 1px solid var(--border);
+        }
+        .kpi-card .kpi-icon svg { width: 16px; height: 16px; fill: var(--text); }
+
+        /* Chart container */
+        .chart-wrap {
+            position: relative;
+            width: 100%;
+            min-height: 260px;
+        }
+        .chart-wrap canvas {
+            width: 100% !important;
+            max-height: 320px;
+        }
+
+        /* Donut center text */
+        .donut-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+        }
+        .donut-center .donut-total {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text);
+            line-height: 1;
+        }
+        .donut-center .donut-label {
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        /* ── Footer bar ───────────────────────────────────────── */
+        .footer-bar {
+            height: 28px;
+            min-height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            font-size: 10px;
+            color: var(--subtle);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            flex-shrink: 0;
+            z-index: 50;
+        }
+
+        /* ── Mobile adjustments ────────────────────────────── */
+        @media (max-width: 768px) {
+            .topbar-nav-links { display: none; }
+            .menu-toggle { display: block; }
+            .nav-overlay.open { display: flex; }
+
+            .kpi-row {
+                grid-template-columns: repeat(2, 1fr);
+                padding: 16px 16px 0;
+            }
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                padding: 16px;
+                gap: 16px;
+            }
+            .kpi-card .kpi-value {
+                font-size: 28px;
+            }
+        }
+        @media (max-width: 480px) {
+            .kpi-row {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                padding: 12px 12px 0;
+            }
+            .dashboard-grid {
+                padding: 12px;
+                gap: 12px;
+            }
+            .stat-card { padding: 14px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Dotted Grid -->
+    <div class="dotted-grid"></div>
+
+    <!-- Spinner -->
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <span style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;">[Calculando estadísticas]</span>
+    </div>
+
+    <!-- Top bar -->
+    <header class="topbar">
+        <button class="menu-toggle" id="menuToggle" aria-label="Menú">
+            <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        </button>
+        <div class="topbar-brand">
+            <div class="topbar-brand-dot"></div>
+            Genealogía Bíblica
+            <span class="brand-subtle">Estadísticas</span>
+        </div>
+
+        <div class="topbar-sep"></div>
+
+        <div class="topbar-nav-links">
+            <a href="index.html" class="topbar-btn">Inicio</a>
+            <a href="visor_genealogia.html" class="topbar-btn">Fichas</a>
+            <a href="arbol_genealogico.html" class="topbar-btn">Árbol</a>
+            <a href="grafo_relaciones.html" class="topbar-btn">Grafo</a>
+            <a href="mapa_geografico.html" class="topbar-btn">Mapa</a>
+            <a href="linea_temporal.html" class="topbar-btn">Línea Temporal</a>
+        </div>
+
+        <button class="topbar-btn" id="themeToggle">
+            <svg id="sunIcon" style="display:none" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3zm0-11c-.55 0-1-.45-1-1V2c0-.55.45-1 1-1s1 .45 1 1v1c0 .55-.45 1-1 1zm0 16c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1s1-.45 1-1v-1c0-.55-.45-1-1-1zm8-8c0-.55-.45-1-1-1h-1c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zM6 12c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zm11.66-5.66l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zm-11.31 11.3l-.71.71c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0l.71-.71c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0zm11.31.01l-.71.71c-.39-.39-1.02-.39-1.41 0l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zM6.35 6.34l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41z"/></svg>
+            <svg id="moonIcon" viewBox="0 0 24 24"><path d="M12.3 22h-.1c-5.5 0-10-4.5-10-10 0-4.8 3.5-8.9 8.3-9.7.6-.1 1.1.4 1 1-.4 2.4.4 4.9 2.1 6.6 1.7 1.7 4.2 2.5 6.6 2.1.6-.1 1.1.4 1 1-.8 4.8-4.9 8.3-9.7 8.3z"/></svg>
+            Tema
+        </button>
+    </header>
+
+    <!-- Mobile Navigation Overlay -->
+    <div class="nav-overlay" id="navOverlay">
+        <a href="index.html" class="topbar-btn">Inicio</a>
+        <a href="visor_genealogia.html" class="topbar-btn">Fichas</a>
+        <a href="arbol_genealogico.html" class="topbar-btn">Árbol</a>
+        <a href="grafo_relaciones.html" class="topbar-btn">Grafo</a>
+        <a href="mapa_geografico.html" class="topbar-btn">Mapa</a>
+        <a href="linea_temporal.html" class="topbar-btn">Línea Temporal</a>
+    </div>
+
+    <!-- Main scrollable area -->
+    <main class="main-scroll" id="mainScroll">
+        <!-- KPI Row -->
+        <div class="kpi-row" id="kpiRow">
+            <div class="stat-card kpi-card">
+                <div class="kpi-icon">
+                    <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                </div>
+                <div class="kpi-value" id="kpiTotalPersonas">—</div>
+                <div class="kpi-label">Total Personas</div>
+            </div>
+            <div class="stat-card kpi-card">
+                <div class="kpi-icon">
+                    <svg viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
+                </div>
+                <div class="kpi-value" id="kpiTotalRelaciones">—</div>
+                <div class="kpi-label">Total Relaciones</div>
+            </div>
+            <div class="stat-card kpi-card">
+                <div class="kpi-icon">
+                    <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 12h-2v-2h2v2zm0-4h-2V6h2v4z"/></svg>
+                </div>
+                <div class="kpi-value" id="kpiConNotas">—</div>
+                <div class="kpi-label">% Con Notas</div>
+            </div>
+            <div class="stat-card kpi-card">
+                <div class="kpi-icon">
+                    <svg viewBox="0 0 24 24"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>
+                </div>
+                <div class="kpi-value" id="kpiConRefs">—</div>
+                <div class="kpi-label">% Con Referencias</div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="dashboard-grid" id="chartsGrid">
+            <!-- Chart 1: Gender Distribution (Donut) -->
+            <div class="stat-card">
+                <div class="stat-card-title">Distribución por Género</div>
+                <div class="chart-wrap" style="display:flex;align-items:center;justify-content:center;">
+                    <canvas id="chartGenero"></canvas>
+                    <div class="donut-center">
+                        <div class="donut-total" id="donutTotal">—</div>
+                        <div class="donut-label">Personas</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart 2: Top 15 con Más Hijos (Horizontal Bar) -->
+            <div class="stat-card">
+                <div class="stat-card-title">Top 15 con Más Hijos</div>
+                <div class="chart-wrap">
+                    <canvas id="chartTopHijos"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 3: Personajes por Linaje (Vertical Bar) -->
+            <div class="stat-card">
+                <div class="stat-card-title">Personajes por Linaje</div>
+                <div class="chart-wrap">
+                    <canvas id="chartLinaje"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 4: Distribución por Generación (Line/Area) -->
+            <div class="stat-card">
+                <div class="stat-card-title">Distribución por Generación</div>
+                <div class="chart-wrap">
+                    <canvas id="chartGeneracion"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer-bar">
+        <span>Genealogía Bíblica — Dashboard de Estadísticas</span>
+    </footer>
+
+    <!-- Data Script -->
+    <script src="genealogia_data.js"></script>
+
+    <script>
+        /* ── Global state ──────────────────────────────────── */
+        const people = {};
+        let chartInstances = [];
+
+        const localPatriarchDetails = {
+            "Adam": { lugar:"Jardín del Edén", significado:"Hombre, hecho de tierra roja", cruzada:"1 Crónicas 1", adicional:"Primer ser humano creado por Dios." },
+            "Eva":  { lugar:"Jardín del Edén", significado:"Vida", cruzada:"Génesis 2:21-25", adicional:"Primera mujer." },
+            "Set":  { lugar:"Fuera del Edén", significado:"Sustituto, designado", cruzada:"1 Crónicas 1", adicional:"Tercer hijo de Adán y Eva." },
+            "Noé":  { lugar:"Mesopotamia", significado:"Descanso", cruzada:"1 Crónicas 1", adicional:"Construyó el arca." },
+            "Abraham": { lugar:"Ur de los Caldeos", significado:"Padre de multitudes", cruzada:"1 Crónicas 1", adicional:"Patriarca de la fe." },
+            "Israel": { lugar:"Padan-aram", significado:"El que lucha con Dios", cruzada:"1 Crónicas 2", adicional:"Padre de las 12 tribus." },
+            "David": { lugar:"Belén", significado:"Amado", cruzada:"1 Crónicas 3", adicional:"Segundo rey de Israel." },
+            "Salomón": { lugar:"Jerusalén", significado:"Pacífico", cruzada:"1 Crónicas 3", adicional:"Edificó el Primer Templo." }
+        };
+
+        /* ── Build Relationship Map ────────────────────────── */
+        function buildRelationshipMap() {
+            if (typeof GENEALOGIA_DATA === 'undefined') return;
+
+            function getOrCreate(name) {
+                if (!name) return null;
+                const n = name.trim();
+                if (!n) return null;
+                if (!people[n]) people[n] = { name:n, gender:"M", father:"", mother:"", birthPlace:"", spouses:new Set(), children:[], notes:"", reference:"", meaning:"" };
+                return people[n];
+            }
+
+            GENEALOGIA_DATA.forEach(row => {
+                const childName = row["Hijos"], fatherName = row["Padre"], motherName = row["Madre"];
+                const child = getOrCreate(childName), father = getOrCreate(fatherName), mother = getOrCreate(motherName);
+                if (child) {
+                    if (fatherName) child.father = fatherName;
+                    if (motherName) child.mother = motherName;
+                    child.gender = row["Género Hijos"] || "M";
+                    const rawPlace = row["Lugar de nacimiento"] || "";
+                    child.birthPlace = rawPlace.replace(/\s*\(padre\)\s*/i, "").trim();
+
+                    const fullInfo = row["Información Adicional"] || row["Notas"] || "";
+                    const childMatch = fullInfo.match(/Sobre (?:el hijo|la hija) \([^)]+\):\s*(.+?)(?:\s*\|\s*Sobre (?:el padre|la madre)|$)/i);
+                    child.notes = childMatch ? childMatch[1].trim() : fullInfo;
+                    child.reference = row["Referencia"] || "";
+                }
+                if (father && childName) {
+                    father.children.push({ name:childName, gender:row["Género Hijos"]||"M", birthPlace:(row["Lugar de nacimiento"]||"").replace(/\s*\(padre\)\s*/i,"").trim() });
+                    if (motherName) { father.spouses.add(motherName); mother.spouses.add(fatherName); }
+                }
+                if (mother && childName) mother.children.push({ name:childName, gender:row["Género Hijos"]||"M", birthPlace:row["Lugar de nacimiento"]||"" });
+                if (fatherName && row["Significado del Nombre (Padre)"]) father.meaning = row["Significado del Nombre (Padre)"];
+            });
+
+            Object.keys(localPatriarchDetails).forEach(name => {
+                const local = localPatriarchDetails[name], p = getOrCreate(name);
+                if (!p) return;
+                if (local.lugar) p.birthPlace = local.lugar;
+                if (local.significado) p.meaning = local.significado;
+                if (local.adicional) p.notes = local.adicional;
+                if (local.cruzada) p.reference = local.cruzada;
+            });
+        }
+
+        /* ── Generation computation ────────────────────────── */
+        const generationCache = {};
+        function getGeneration(name) {
+            if (generationCache[name] !== undefined) return generationCache[name];
+            if (name.toLowerCase() === "adam") return 0;
+
+            const queue = [[name, 0]];
+            const visited = new Set([name]);
+
+            while (queue.length > 0) {
+                const [currName, depth] = queue.shift();
+                const curr = people[currName];
+                if (!curr) continue;
+
+                if (curr.father) {
+                    if (curr.father.toLowerCase() === "adam") {
+                        generationCache[name] = depth + 1;
+                        return depth + 1;
+                    }
+                    if (!visited.has(curr.father)) {
+                        visited.add(curr.father);
+                        queue.push([curr.father, depth + 1]);
+                    }
+                }
+                if (curr.mother) {
+                    if (curr.mother.toLowerCase() === "adam") {
+                        generationCache[name] = depth + 1;
+                        return depth + 1;
+                    }
+                    if (!visited.has(curr.mother)) {
+                        visited.add(curr.mother);
+                        queue.push([curr.mother, depth + 1]);
+                    }
+                }
+            }
+            return -1; // Not determined
+        }
+
+        /* ── Lineage path ──────────────────────────────────── */
+        function getLineagePath(name) {
+            const path = [], visited = new Set();
+            let cur = people[name];
+            while (cur && !visited.has(cur.name)) {
+                path.unshift(cur.name);
+                visited.add(cur.name);
+                if (cur.name.toLowerCase() === "adam") break;
+                cur = people[cur.father];
+            }
+            return path;
+        }
+
+        /* ── Compute statistics ────────────────────────────── */
+        function computeStats() {
+            const allPeople = Object.values(people);
+            const totalPeople = allPeople.length;
+            const totalRelaciones = GENEALOGIA_DATA.length;
+
+            // Gender distribution
+            let maleCount = 0, femaleCount = 0;
+            allPeople.forEach(p => {
+                if (p.gender === "F") femaleCount++;
+                else maleCount++;
+            });
+
+            // % with notes
+            const withNotes = allPeople.filter(p => p.notes && p.notes.trim().length > 0).length;
+            const pctNotes = totalPeople > 0 ? Math.round((withNotes / totalPeople) * 100) : 0;
+
+            // % with references
+            const withRefs = allPeople.filter(p => p.reference && p.reference.trim().length > 0).length;
+            const pctRefs = totalPeople > 0 ? Math.round((withRefs / totalPeople) * 100) : 0;
+
+            // Top 15 with most children (deduplicate children by name)
+            const childCountMap = [];
+            allPeople.forEach(p => {
+                const uniqueChildren = new Set(p.children.map(c => c.name));
+                if (uniqueChildren.size > 0) {
+                    childCountMap.push({ name: p.name, count: uniqueChildren.size });
+                }
+            });
+            childCountMap.sort((a, b) => b.count - a.count);
+            const top15 = childCountMap.slice(0, 15);
+
+            // Lineage distribution
+            const lineageRoots = ["Adam", "Noé", "Abraham", "Israel", "David"];
+            const lineageCounts = {};
+            lineageRoots.forEach(r => lineageCounts[r] = 0);
+            lineageCounts["Otros"] = 0;
+
+            allPeople.forEach(p => {
+                const path = getLineagePath(p.name);
+                let assigned = false;
+                // Assign to the most specific lineage found
+                for (let i = lineageRoots.length - 1; i >= 0; i--) {
+                    if (path.includes(lineageRoots[i])) {
+                        lineageCounts[lineageRoots[i]]++;
+                        assigned = true;
+                        break;
+                    }
+                }
+                if (!assigned) lineageCounts["Otros"]++;
+            });
+
+            // Generation distribution
+            const genCounts = {};
+            allPeople.forEach(p => {
+                const gen = getGeneration(p.name);
+                if (gen >= 0) {
+                    genCounts[gen] = (genCounts[gen] || 0) + 1;
+                }
+            });
+            const maxGen = Math.max(...Object.keys(genCounts).map(Number), 0);
+            const genLabels = [], genValues = [];
+            for (let i = 0; i <= maxGen; i++) {
+                genLabels.push(i.toString());
+                genValues.push(genCounts[i] || 0);
+            }
+
+            return {
+                totalPeople, totalRelaciones,
+                maleCount, femaleCount,
+                pctNotes, pctRefs,
+                top15,
+                lineageCounts,
+                genLabels, genValues
+            };
+        }
+
+        /* ── Chart color helpers ───────────────────────────── */
+        function getCSSVar(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        }
+
+        function getChartColors() {
+            return {
+                text: getCSSVar('--text'),
+                muted: getCSSVar('--muted'),
+                subtle: getCSSVar('--subtle'),
+                border: getCSSVar('--border'),
+                borderSubtle: getCSSVar('--border-subtle'),
+                surface: getCSSVar('--surface'),
+                surfaceRaised: getCSSVar('--surface-raised'),
+                mDot: getCSSVar('--m-dot'),
+                fDot: getCSSVar('--f-dot'),
+            };
+        }
+
+        /* ── Build Charts ──────────────────────────────────── */
+        function destroyCharts() {
+            chartInstances.forEach(c => c.destroy());
+            chartInstances = [];
+        }
+
+        function buildCharts(stats) {
+            destroyCharts();
+            const colors = getChartColors();
+
+            // Set Chart.js global defaults
+            Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+            Chart.defaults.color = colors.text;
+
+            // ── 1. Gender Donut ──
+            const ctxGenero = document.getElementById('chartGenero').getContext('2d');
+            chartInstances.push(new Chart(ctxGenero, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Masculino', 'Femenino'],
+                    datasets: [{
+                        data: [stats.maleCount, stats.femaleCount],
+                        backgroundColor: [colors.mDot, colors.fDot],
+                        borderColor: [colors.border, colors.border],
+                        borderWidth: 2,
+                        hoverOffset: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    cutout: '65%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: colors.text,
+                                font: { size: 11, weight: '600' },
+                                padding: 16,
+                                usePointStyle: true,
+                                pointStyleWidth: 10
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: colors.surface,
+                            titleColor: colors.text,
+                            bodyColor: colors.muted,
+                            borderColor: colors.border,
+                            borderWidth: 1,
+                            titleFont: { weight: '700' },
+                            callbacks: {
+                                label: ctx => {
+                                    const pct = ((ctx.raw / stats.totalPeople) * 100).toFixed(1);
+                                    return ` ${ctx.label}: ${ctx.raw} (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            }));
+            document.getElementById('donutTotal').textContent = stats.totalPeople;
+
+            // ── 2. Top 15 Horizontal Bar ──
+            const ctxTop = document.getElementById('chartTopHijos').getContext('2d');
+            const top15Names = stats.top15.map(x => x.name);
+            const top15Counts = stats.top15.map(x => x.count);
+            const barGradientColors = stats.top15.map((_, i) => {
+                const t = i / Math.max(stats.top15.length - 1, 1);
+                const r = Math.round(59 + t * (20 - 59));
+                const g = Math.round(130 + t * (184 - 130));
+                const b = Math.round(246 + t * (166 - 246));
+                return `rgb(${r}, ${g}, ${b})`;
+            });
+            chartInstances.push(new Chart(ctxTop, {
+                type: 'bar',
+                data: {
+                    labels: top15Names,
+                    datasets: [{
+                        label: 'Hijos',
+                        data: top15Counts,
+                        backgroundColor: barGradientColors,
+                        borderColor: colors.border,
+                        borderWidth: 1.5,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: colors.surface,
+                            titleColor: colors.text,
+                            bodyColor: colors.muted,
+                            borderColor: colors.border,
+                            borderWidth: 1,
+                            titleFont: { weight: '700' }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: colors.borderSubtle + '30', drawBorder: false },
+                            ticks: { color: colors.muted, font: { size: 10, weight: '600' } },
+                            title: { display: true, text: 'Cantidad de Hijos', color: colors.subtle, font: { size: 10, weight: '600' } }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { color: colors.text, font: { size: 11, weight: '500' } }
+                        }
+                    }
+                }
+            }));
+
+            // ── 3. Lineage Vertical Bar ──
+            const ctxLinaje = document.getElementById('chartLinaje').getContext('2d');
+            const lineageLabels = Object.keys(stats.lineageCounts);
+            const lineageValues = Object.values(stats.lineageCounts);
+            const lineageColors = [
+                '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', colors.subtle
+            ];
+            chartInstances.push(new Chart(ctxLinaje, {
+                type: 'bar',
+                data: {
+                    labels: lineageLabels,
+                    datasets: [{
+                        label: 'Personajes',
+                        data: lineageValues,
+                        backgroundColor: lineageColors.slice(0, lineageLabels.length),
+                        borderColor: colors.border,
+                        borderWidth: 1.5,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: colors.surface,
+                            titleColor: colors.text,
+                            bodyColor: colors.muted,
+                            borderColor: colors.border,
+                            borderWidth: 1,
+                            titleFont: { weight: '700' }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: colors.borderSubtle + '30', drawBorder: false },
+                            ticks: { color: colors.muted, font: { size: 10, weight: '600' } },
+                            title: { display: true, text: 'Cantidad', color: colors.subtle, font: { size: 10, weight: '600' } }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: colors.text, font: { size: 11, weight: '600' } }
+                        }
+                    }
+                }
+            }));
+
+            // ── 4. Generation Line/Area ──
+            const ctxGen = document.getElementById('chartGeneracion').getContext('2d');
+            const genGradient = ctxGen.createLinearGradient(0, 0, 0, 300);
+            genGradient.addColorStop(0, colors.mDot + '50');
+            genGradient.addColorStop(1, colors.mDot + '05');
+            chartInstances.push(new Chart(ctxGen, {
+                type: 'line',
+                data: {
+                    labels: stats.genLabels,
+                    datasets: [{
+                        label: 'Personas',
+                        data: stats.genValues,
+                        fill: true,
+                        backgroundColor: genGradient,
+                        borderColor: colors.mDot,
+                        borderWidth: 2.5,
+                        pointBackgroundColor: colors.mDot,
+                        pointBorderColor: colors.border,
+                        pointBorderWidth: 1.5,
+                        pointRadius: 3,
+                        pointHoverRadius: 6,
+                        tension: 0.35
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: colors.surface,
+                            titleColor: colors.text,
+                            bodyColor: colors.muted,
+                            borderColor: colors.border,
+                            borderWidth: 1,
+                            titleFont: { weight: '700' },
+                            callbacks: {
+                                title: ctx => `Generación ${ctx[0].label}`,
+                                label: ctx => ` ${ctx.raw} personas`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: colors.borderSubtle + '30', drawBorder: false },
+                            ticks: { color: colors.muted, font: { size: 10, weight: '600' } },
+                            title: { display: true, text: 'Personas', color: colors.subtle, font: { size: 10, weight: '600' } },
+                            beginAtZero: true
+                        },
+                        x: {
+                            grid: { color: colors.borderSubtle + '15', drawBorder: false },
+                            ticks: {
+                                color: colors.muted,
+                                font: { size: 10, weight: '600' },
+                                maxTicksLimit: 20
+                            },
+                            title: { display: true, text: 'Generación', color: colors.subtle, font: { size: 10, weight: '600' } }
+                        }
+                    }
+                }
+            }));
+        }
+
+        /* ── Populate KPIs ─────────────────────────────────── */
+        function populateKPIs(stats) {
+            document.getElementById('kpiTotalPersonas').textContent = stats.totalPeople.toLocaleString('es-ES');
+            document.getElementById('kpiTotalRelaciones').textContent = stats.totalRelaciones.toLocaleString('es-ES');
+            document.getElementById('kpiConNotas').textContent = stats.pctNotes + '%';
+            document.getElementById('kpiConRefs').textContent = stats.pctRefs + '%';
+        }
+
+        /* ── Theme toggle ──────────────────────────────────── */
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme_genealogia', theme);
+            document.getElementById('sunIcon').style.display = theme === 'dark' ? 'block' : 'none';
+            document.getElementById('moonIcon').style.display = theme === 'dark' ? 'none' : 'block';
+
+            // Recreate charts with new colors
+            if (Object.keys(people).length > 0) {
+                const stats = computeStats();
+                buildCharts(stats);
+            }
+        }
+
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme');
+            applyTheme(current === 'dark' ? 'light' : 'dark');
+        });
+
+        /* ── Hamburger menu ────────────────────────────────── */
+        document.getElementById('menuToggle').addEventListener('click', () => {
+            document.getElementById('navOverlay').classList.toggle('open');
+        });
+        // Close on click outside
+        document.getElementById('mainScroll').addEventListener('click', () => {
+            document.getElementById('navOverlay').classList.remove('open');
+        });
+
+        /* ── Init ──────────────────────────────────────────── */
+        window.addEventListener('DOMContentLoaded', () => {
+            // Restore theme
+            const saved = localStorage.getItem('theme_genealogia');
+            if (saved === 'dark') applyTheme('dark');
+
+            setTimeout(() => {
+                buildRelationshipMap();
+                const stats = computeStats();
+                populateKPIs(stats);
+                buildCharts(stats);
+
+                // Hide spinner
+                const overlay = document.getElementById('loadingOverlay');
+                overlay.style.opacity = '0';
+                overlay.style.visibility = 'hidden';
+                setTimeout(() => overlay.style.display = 'none', 300);
+            }, 100);
+        });
+    </script>
+
+</body>
+</html>

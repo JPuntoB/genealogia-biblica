@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
     <style>
         /* ── Neo-Skeuo Design tokens ──────────────────────────── */
         :root {
@@ -659,7 +660,7 @@
 
         /* ── CSS Print optimizations ──────────────────────────── */
         @media print {
-            .topbar, .sidebar, .action-row, .breadcrumb, #loadingOverlay { display: none !important; }
+            .topbar, .sidebar, .action-row, .breadcrumb, #loadingOverlay, .shortcuts-bar { display: none !important; }
             body, .workspace, .detail, .detail-scroll { height: auto !important; overflow: visible !important; background: white !important; color: black !important; }
             .workspace { display: block !important; }
             .detail-scroll { display: flex !important; flex-direction: column !important; padding: 0 !important; gap: 20px !important; }
@@ -667,6 +668,47 @@
             .avatar-block { width: 120px !important; height: 120px !important; }
             .meta-card { flex: 1 !important; }
             .right-col { width: 100% !important; }
+        }
+
+        /* ── Autocomplete wrapper ──────────────────────────────── */
+        .ac-wrapper { position: relative; width: 100%; }
+        .ac-wrapper input { width: 100%; }
+        .ac-dropdown {
+            position: absolute; top: 100%; left: 0; right: 0; z-index: 200;
+            background: var(--surface); border: 1px solid var(--border);
+            max-height: 160px; overflow-y: auto;
+            display: none;
+            box-shadow: 2px 2px 0px var(--border);
+        }
+        .ac-dropdown.open { display: block; }
+        .ac-option {
+            padding: 5px 8px; font-size: 12px; cursor: pointer;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .ac-option:hover, .ac-option.highlight { background: var(--accent-bg); }
+        .ac-option .ac-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; border: 1px solid var(--border); }
+
+        /* ── Keyboard shortcuts bar ────────────────────────────── */
+        .shortcuts-bar {
+            height: 24px; min-height: 24px;
+            display: flex; align-items: center; justify-content: center;
+            gap: 16px; padding: 0 12px;
+            background: var(--surface-inset); border-top: 1px dashed var(--border-subtle);
+            font-size: 10px; color: var(--subtle); font-weight: 600;
+            z-index: 5; flex-shrink: 0;
+        }
+        .shortcuts-bar kbd {
+            display: inline-block; padding: 1px 4px;
+            background: var(--surface); border: 1px solid var(--border);
+            font-family: inherit; font-size: 9px; font-weight: 700;
+            box-shadow: 1px 1px 0px var(--border);
+        }
+        @media (max-width: 768px) { .shortcuts-bar { display: none; } }
+
+        /* ── Focus ring for a11y ───────────────────────────────── */
+        :focus-visible {
+            outline: 2px solid var(--text);
+            outline-offset: 2px;
         }
     </style>
 </head>
@@ -685,7 +727,7 @@
     </div>
 
     <!-- Top bar -->
-    <header class="topbar">
+    <header class="topbar" role="navigation" aria-label="Barra de navegación principal">
         <button class="menu-toggle" id="menuToggle" aria-label="Menu">
             <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
         </button>
@@ -727,7 +769,7 @@
     <div class="workspace">
 
         <!-- Sidebar -->
-        <aside class="sidebar" id="sidebar">
+        <aside class="sidebar" id="sidebar" role="navigation" aria-label="Panel de búsqueda y filtros">
             <!-- Mobile only Navigation -->
             <div class="mobile-nav">
                 <span class="filter-label">Navegación</span>
@@ -739,7 +781,7 @@
 
             <div class="sidebar-search-wrap">
                 <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                <input type="text" class="sidebar-search" id="searchInput" placeholder="Buscar personaje…">
+                <input type="text" class="sidebar-search" id="searchInput" placeholder="Buscar personaje… (Ctrl+K)" aria-label="Buscar personaje por nombre">
             </div>
 
             <!-- Linaje filter section -->
@@ -775,7 +817,7 @@
         </aside>
 
         <!-- Detail panel -->
-        <main class="detail" id="detailPanel">
+        <main class="detail" id="detailPanel" role="main" aria-label="Panel de detalle del personaje" aria-live="polite">
             <!-- Breadcrumb -->
             <div class="breadcrumb" id="breadcrumb">
                 <span style="color:var(--subtle); font-size:11px;">Linaje</span>
@@ -844,14 +886,15 @@
                             </div>
 
                             <div class="action-row">
-                                <a href="#" id="viewInTreeBtn" class="topbar-btn" target="_blank" style="display:none">
+                                <a href="#" id="viewInTreeBtn" class="topbar-btn" target="_blank" style="display:none" aria-label="Ver en árbol genealógico">
                                     <svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
                                     Ver en árbol
                                 </a>
-                                <button class="topbar-btn" id="btnEditar">Editar Ficha</button>
-                                <button class="topbar-btn" id="btnCompartir">Compartir</button>
-                                <button class="topbar-btn" id="btnComparar">Comparar</button>
-                                <button class="topbar-btn" id="btnPrint" onclick="window.print()">Imprimir</button>
+                                <button class="topbar-btn" id="btnEditar" aria-label="Editar ficha del personaje (E)">Editar Ficha</button>
+                                <button class="topbar-btn" id="btnExportPDF" aria-label="Exportar linaje como PDF">Exportar PDF</button>
+                                <button class="topbar-btn" id="btnCompartir" aria-label="Copiar enlace al portapapeles">Compartir</button>
+                                <button class="topbar-btn" id="btnComparar" aria-label="Activar modo comparación">Comparar</button>
+                                <button class="topbar-btn" id="btnPrint" onclick="window.print()" aria-label="Imprimir ficha">Imprimir</button>
                             </div>
                         </div>
 
@@ -929,6 +972,14 @@
         </main>
     </div>
 
+    <!-- Keyboard shortcuts bar -->
+    <div class="shortcuts-bar" aria-label="Atajos de teclado disponibles">
+        <span><kbd>Ctrl</kbd>+<kbd>K</kbd> Buscar</span>
+        <span><kbd>E</kbd> Editar</span>
+        <span><kbd>Esc</kbd> Cerrar</span>
+        <span><kbd>Alt</kbd>+<kbd>←</kbd><kbd>→</kbd> Historial</span>
+    </div>
+
     <!-- Create Person Modal -->
     <div id="createPersonModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:9999; align-items:center; justify-content:center;">
         <div style="background:var(--surface); border:3px double var(--border); border-radius:var(--radius-sm); width:360px; padding:20px; box-shadow:var(--shadow-block); display:flex; flex-direction:column; gap:12px; position:relative;">
@@ -956,17 +1007,26 @@
 
             <div style="display:flex; flex-direction:column; gap:4px;">
                 <label style="font-size:9.5px; font-weight:700; color:var(--subtle); text-transform:uppercase;">Padre</label>
-                <input type="text" id="newFatherInput" class="sidebar-search" style="padding-left:10px;" placeholder="Nombre del padre">
+                <div class="ac-wrapper" id="acNewFatherWrap">
+                    <input type="text" id="newFatherInput" class="sidebar-search" style="padding-left:10px;" placeholder="Nombre del padre" autocomplete="off">
+                    <div class="ac-dropdown" id="acNewFatherDrop"></div>
+                </div>
             </div>
 
             <div style="display:flex; flex-direction:column; gap:4px;">
                 <label style="font-size:9.5px; font-weight:700; color:var(--subtle); text-transform:uppercase;">Madre</label>
-                <input type="text" id="newMotherInput" class="sidebar-search" style="padding-left:10px;" placeholder="Nombre de la madre">
+                <div class="ac-wrapper" id="acNewMotherWrap">
+                    <input type="text" id="newMotherInput" class="sidebar-search" style="padding-left:10px;" placeholder="Nombre de la madre" autocomplete="off">
+                    <div class="ac-dropdown" id="acNewMotherDrop"></div>
+                </div>
             </div>
 
             <div style="display:flex; flex-direction:column; gap:4px;">
                 <label style="font-size:9.5px; font-weight:700; color:var(--subtle); text-transform:uppercase;">Cónyuge</label>
-                <input type="text" id="newSpouseInput" class="sidebar-search" style="padding-left:10px;" placeholder="Nombre del cónyuge">
+                <div class="ac-wrapper" id="acNewSpouseWrap">
+                    <input type="text" id="newSpouseInput" class="sidebar-search" style="padding-left:10px;" placeholder="Nombre del cónyuge" autocomplete="off">
+                    <div class="ac-dropdown" id="acNewSpouseDrop"></div>
+                </div>
             </div>
 
             <div style="display:flex; flex-direction:column; gap:4px;">
@@ -1593,6 +1653,42 @@
             });
         }
 
+        // ── Autocomplete helper ──
+        function setupAutocomplete(inputEl, dropdownEl) {
+            const allNames = Object.keys(people).sort();
+            let highlightIdx = -1;
+
+            function render(query) {
+                const q = normText(query);
+                const matches = q.length > 0 ? allNames.filter(n => normText(n).includes(q)).slice(0, 8) : [];
+                dropdownEl.innerHTML = '';
+                highlightIdx = -1;
+                if (matches.length === 0) { dropdownEl.classList.remove('open'); return; }
+                matches.forEach((name, idx) => {
+                    const opt = document.createElement('div');
+                    opt.className = 'ac-option';
+                    const p = people[name];
+                    const color = p && p.gender === 'F' ? 'var(--f-dot)' : 'var(--m-dot)';
+                    opt.innerHTML = `<span class="ac-dot" style="background:${color}"></span>${name}`;
+                    opt.addEventListener('mousedown', e => { e.preventDefault(); inputEl.value = name; dropdownEl.classList.remove('open'); });
+                    dropdownEl.appendChild(opt);
+                });
+                dropdownEl.classList.add('open');
+            }
+
+            inputEl.addEventListener('input', () => render(inputEl.value));
+            inputEl.addEventListener('focus', () => { if (inputEl.value.length > 0) render(inputEl.value); });
+            inputEl.addEventListener('blur', () => setTimeout(() => dropdownEl.classList.remove('open'), 150));
+            inputEl.addEventListener('keydown', e => {
+                const opts = dropdownEl.querySelectorAll('.ac-option');
+                if (!dropdownEl.classList.contains('open') || opts.length === 0) return;
+                if (e.key === 'ArrowDown') { e.preventDefault(); highlightIdx = Math.min(highlightIdx + 1, opts.length - 1); opts.forEach((o,i) => o.classList.toggle('highlight', i === highlightIdx)); }
+                else if (e.key === 'ArrowUp') { e.preventDefault(); highlightIdx = Math.max(highlightIdx - 1, 0); opts.forEach((o,i) => o.classList.toggle('highlight', i === highlightIdx)); }
+                else if (e.key === 'Enter' && highlightIdx >= 0) { e.preventDefault(); inputEl.value = opts[highlightIdx].textContent; dropdownEl.classList.remove('open'); }
+                else if (e.key === 'Escape') { dropdownEl.classList.remove('open'); }
+            });
+        }
+
         // ── Visual Editing Mode Lógica ──
         function toggleEditMode() {
             const p = people[selectedPersonName];
@@ -1605,9 +1701,9 @@
                 btn.textContent = "Guardar Cambios";
                 btn.classList.add("active");
 
-                // Replace meaning, birthPlace, notes, father, mother, spouse, gender with inputs
-                document.getElementById("valMeaning").innerHTML = `<input type="text" id="editMeaning" style="width:100%;" value="${p.meaning || ''}">`;
-                document.getElementById("valBirthPlace").innerHTML = `<input type="text" id="editBirthPlace" style="width:100%;" value="${p.birthPlace || ''}">`;
+                // Replace meaning, birthPlace, notes with simple inputs
+                document.getElementById("valMeaning").innerHTML = `<input type="text" id="editMeaning" style="width:100%;" value="${(p.meaning || '').replace(/"/g, '&quot;')}">`;
+                document.getElementById("valBirthPlace").innerHTML = `<input type="text" id="editBirthPlace" style="width:100%;" value="${(p.birthPlace || '').replace(/"/g, '&quot;')}">`;
                 document.getElementById("valNotes").innerHTML = `<textarea id="editNotes" style="width:100%; height:120px; font-family:inherit; font-size:12px; background:var(--surface-inset); border:1px solid var(--border); color:var(--text); resize:vertical;">${p.notes || ''}</textarea>`;
 
                 const genderText = p.gender === "M" ? "M" : "F";
@@ -1618,9 +1714,15 @@
                     </select>
                 `;
 
-                document.getElementById("valFather").innerHTML = `<input type="text" id="editFather" value="${p.father || ''}">`;
-                document.getElementById("valMother").innerHTML = `<input type="text" id="editMother" value="${p.mother || ''}">`;
-                document.getElementById("valSpouse").innerHTML = `<input type="text" id="editSpouse" value="${Array.from(p.spouses).join(', ') || ''}">`;
+                // Autocomplete-enabled relational fields
+                document.getElementById("valFather").innerHTML = `<div class="ac-wrapper"><input type="text" id="editFather" value="${p.father || ''}" autocomplete="off"><div class="ac-dropdown" id="acEditFatherDrop"></div></div>`;
+                document.getElementById("valMother").innerHTML = `<div class="ac-wrapper"><input type="text" id="editMother" value="${p.mother || ''}" autocomplete="off"><div class="ac-dropdown" id="acEditMotherDrop"></div></div>`;
+                document.getElementById("valSpouse").innerHTML = `<div class="ac-wrapper"><input type="text" id="editSpouse" value="${Array.from(p.spouses).join(', ') || ''}" autocomplete="off"><div class="ac-dropdown" id="acEditSpouseDrop"></div></div>`;
+
+                // Wire up autocomplete on the new inputs
+                setupAutocomplete(document.getElementById('editFather'), document.getElementById('acEditFatherDrop'));
+                setupAutocomplete(document.getElementById('editMother'), document.getElementById('acEditMotherDrop'));
+                setupAutocomplete(document.getElementById('editSpouse'), document.getElementById('acEditSpouseDrop'));
             } else {
                 // Save edited fields
                 const stored = getCorreccionesData();
@@ -1675,6 +1777,34 @@
             const spouse = document.getElementById("newSpouseInput").value.trim();
             const meaning = document.getElementById("newMeaningInput").value.trim();
             const notes = document.getElementById("newNotesInput").value.trim();
+
+            // Validate relational fields — offer to create missing parents
+            const missingRelatives = [];
+            if (father && !people[father]) missingRelatives.push(`Padre: "${father}"`);
+            if (mother && !people[mother]) missingRelatives.push(`Madre: "${mother}"`);
+            if (spouse && !people[spouse]) missingRelatives.push(`Cónyuge: "${spouse}"`);
+
+            if (missingRelatives.length > 0) {
+                const createThem = confirm(
+                    `Los siguientes familiares no existen en la base de datos:\n\n` +
+                    missingRelatives.join('\n') +
+                    `\n\n¿Deseas crearlos automáticamente con una ficha mínima?`
+                );
+                if (createThem) {
+                    const stored = getCorreccionesData();
+                    if (father && !people[father]) {
+                        stored.nuevos.push({ "Padre":"", "Madre":"", "Hijos":father, "Género Hijos":"M", "Lugar de nacimiento":"", "Referencia":"Creado automáticamente", "Notas":"Ficha creada automáticamente al registrar a " + name, "Información Adicional":"" });
+                    }
+                    if (mother && !people[mother]) {
+                        stored.nuevos.push({ "Padre":"", "Madre":"", "Hijos":mother, "Género Hijos":"F", "Lugar de nacimiento":"", "Referencia":"Creado automáticamente", "Notas":"Ficha creada automáticamente al registrar a " + name, "Información Adicional":"" });
+                    }
+                    if (spouse && !people[spouse]) {
+                        const spouseGender = gender === 'M' ? 'F' : 'M';
+                        stored.nuevos.push({ "Padre":"", "Madre":"", "Hijos":spouse, "Género Hijos":spouseGender, "Lugar de nacimiento":"", "Referencia":"Creado automáticamente", "Notas":"Ficha creada automáticamente como cónyuge de " + name, "Información Adicional":"" });
+                    }
+                    saveCorreccionesData(stored);
+                }
+            }
 
             const stored = getCorreccionesData();
             
@@ -1733,6 +1863,166 @@
             }
         }
 
+        // ── PDF Export (jsPDF) ──
+        function exportLineagePDF() {
+            const p = people[selectedPersonName];
+            if (!p) { alert('Selecciona un personaje primero.'); return; }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+            const pageW = doc.internal.pageSize.getWidth();
+            let y = 20;
+
+            function checkPage(needed) {
+                if (y + needed > 270) { doc.addPage(); y = 20; }
+            }
+
+            // Title
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(16);
+            doc.text('Genealogía Bíblica — Linaje', pageW / 2, y, { align: 'center' });
+            y += 10;
+
+            // Lineage path
+            const trail = getLineagePath(p.name);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text(trail.join(' › '), pageW / 2, y, { align: 'center', maxWidth: pageW - 30 });
+            y += 10;
+
+            // Separator
+            doc.setDrawColor(100);
+            doc.line(15, y, pageW - 15, y);
+            y += 8;
+
+            // Ancestor table
+            trail.forEach(name => {
+                const person = people[name];
+                if (!person) return;
+                checkPage(28);
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(11);
+                doc.text(person.name, 15, y);
+                y += 5;
+
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(9);
+                const gen = getGeneration(person.name);
+                const genStr = typeof gen === 'number' ? `${gen}ª generación desde Adán` : gen;
+                const info = [
+                    `Género: ${person.gender === 'F' ? 'Femenino' : 'Masculino'}  |  ${genStr}`,
+                    `Padre: ${person.father || '—'}  |  Madre: ${person.mother || '—'}`,
+                    `Origen: ${person.birthPlace || '—'}`,
+                ];
+                if (person.meaning) info.push(`Significado: ${person.meaning}`);
+                info.forEach(line => {
+                    checkPage(5);
+                    doc.text(line, 18, y, { maxWidth: pageW - 36 });
+                    y += 4;
+                });
+                if (person.notes) {
+                    checkPage(8);
+                    const noteLines = doc.splitTextToSize(person.notes, pageW - 36);
+                    noteLines.forEach(nl => {
+                        checkPage(5);
+                        doc.text(nl, 18, y);
+                        y += 4;
+                    });
+                }
+                y += 4;
+                doc.setDrawColor(200);
+                doc.line(15, y, pageW - 15, y);
+                y += 6;
+            });
+
+            doc.save(`linaje_${p.name.replace(/\s+/g, '_')}.pdf`);
+        }
+
+        // ── Keyboard Shortcuts ──
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', e => {
+                const tag = document.activeElement.tagName;
+                const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+                // Ctrl+K / Cmd+K → Focus search
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                    e.preventDefault();
+                    const search = document.getElementById('searchInput');
+                    search.focus();
+                    search.select();
+                    // Open sidebar on mobile
+                    if (window.innerWidth <= 768) {
+                        document.getElementById('sidebar').classList.add('open');
+                        document.getElementById('sidebarBackdrop').style.display = 'block';
+                    }
+                    return;
+                }
+
+                // Escape → Close modals / exit edit mode
+                if (e.key === 'Escape') {
+                    const modal = document.getElementById('createPersonModal');
+                    if (modal.style.display === 'flex') { closeCreateModal(); return; }
+                    if (isEditing) { toggleEditMode(); return; }
+                    if (isComparing) {
+                        document.getElementById('btnCloseComparison').click();
+                        return;
+                    }
+                    // Close mobile sidebar
+                    if (window.innerWidth <= 768 && document.getElementById('sidebar').classList.contains('open')) {
+                        document.getElementById('sidebar').classList.remove('open');
+                        document.getElementById('sidebarBackdrop').style.display = 'none';
+                    }
+                    return;
+                }
+
+                // Don't capture shortcuts when typing in inputs
+                if (isInput) return;
+
+                // E → Toggle edit mode
+                if (e.key === 'e' || e.key === 'E') {
+                    if (selectedPersonName) { e.preventDefault(); toggleEditMode(); }
+                    return;
+                }
+
+                // Alt+← / Alt+→ → History navigation
+                if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); navigateBack(); return; }
+                if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); navigateForward(); return; }
+            });
+        }
+
+        // ── Accessibility setup ──
+        function setupAccessibility() {
+            // Make index items keyboard-navigable
+            const observer = new MutationObserver(() => {
+                document.querySelectorAll('.index-item').forEach(el => {
+                    if (!el.hasAttribute('tabindex')) {
+                        el.setAttribute('tabindex', '0');
+                        el.setAttribute('role', 'button');
+                        el.setAttribute('aria-label', `Ver ficha de ${el.dataset.name}`);
+                        el.addEventListener('keydown', ev => {
+                            if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); el.click(); }
+                        });
+                    }
+                });
+            });
+            observer.observe(document.getElementById('indexList'), { childList: true });
+
+            // Make child chips keyboard-navigable
+            const detailObserver = new MutationObserver(() => {
+                document.querySelectorAll('.child-chip').forEach(el => {
+                    if (!el.hasAttribute('tabindex')) {
+                        el.setAttribute('tabindex', '0');
+                        el.setAttribute('role', 'button');
+                        el.addEventListener('keydown', ev => {
+                            if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); el.click(); }
+                        });
+                    }
+                });
+            });
+            detailObserver.observe(document.getElementById('detailScroll'), { childList: true, subtree: true });
+        }
+
         window.addEventListener("DOMContentLoaded", () => {
             buildRelationshipMap();
             setupIndexList();
@@ -1742,13 +2032,21 @@
             setupSharing();
             setupComparison();
             setupLineageFilter();
+            setupKeyboardShortcuts();
+            setupAccessibility();
 
             document.getElementById("btnBack").addEventListener("click", navigateBack);
             document.getElementById("btnForward").addEventListener("click", navigateForward);
             document.getElementById("btnEditar").addEventListener("click", toggleEditMode);
+            document.getElementById("btnExportPDF").addEventListener("click", exportLineagePDF);
             document.getElementById("btnAddPerson").addEventListener("click", openCreateModal);
             document.getElementById("btnExportCorrections").addEventListener("click", exportCorrections);
             document.getElementById("btnClearCorrections").addEventListener("click", clearCorrecciones);
+
+            // Autocomplete on create modal fields
+            setupAutocomplete(document.getElementById('newFatherInput'), document.getElementById('acNewFatherDrop'));
+            setupAutocomplete(document.getElementById('newMotherInput'), document.getElementById('acNewMotherDrop'));
+            setupAutocomplete(document.getElementById('newSpouseInput'), document.getElementById('acNewSpouseDrop'));
 
             const overlay = document.getElementById("loadingOverlay");
             overlay.style.opacity = "0";

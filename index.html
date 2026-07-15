@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#faf6f0">
     <style>
         /* ── Neo-Skeuo design system ────────────────────────── */
         :root {
@@ -357,6 +359,15 @@
             Exploración técnica y estructurada desde Adán hasta el exilio de Babilonia.
             Visualización avanzada a través de cuatro esquemas de datos interactivos.
         </p>
+
+        <!-- Global Search Bar -->
+        <div class="search-container" style="position: relative; max-width: 480px; margin: 24px auto 0; width: 100%; z-index: 100;">
+            <div style="position: relative;">
+                <svg viewBox="0 0 24 24" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; fill: var(--subtle); pointer-events: none;"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                <input type="text" id="globalSearchInput" placeholder="Buscar personaje en toda la base de datos..." style="width: 100%; padding: 12px 16px 12px 44px; font-family: inherit; font-size: 13.5px; color: var(--text); background: var(--surface-inset); border: 2px solid var(--border); border-radius: var(--radius-sm); outline: none; box-shadow: inset 2px 2px 0px rgba(0,0,0,0.05); font-weight: 500;">
+            </div>
+            <div id="globalSearchResults" style="position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 2px solid var(--border); box-shadow: 3px 3px 0px var(--border); margin-top: 4px; border-radius: var(--radius-sm); display: none; max-height: 280px; overflow-y: auto; text-align: left;"></div>
+        </div>
         <div class="hero-stats">
             <div class="hero-stat">
                 <span class="hero-stat-val">3600+</span>
@@ -375,7 +386,7 @@
 
     <!-- Navigation cards -->
     <section class="cards-section">
-        <div class="cards-grid">
+        <div class="cards-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
 
             <!-- Fichas -->
             <a href="visor_genealogia.html" class="nav-card" id="card-fichas">
@@ -428,7 +439,7 @@
                     <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
                 </div>
                 <div class="card-content">
-                    <div class="card-title">03. Grafo de Red</div>
+                    <div class="card-title">03. Grafo de Relaciones</div>
                     <div class="card-desc">
                         Vista topológica interactiva con simulación D3.js para estudiar la densidad y el cruzamiento de ramas y linajes complejos.
                     </div>
@@ -465,6 +476,50 @@
                 </div>
             </a>
 
+            <!-- Línea Temporal -->
+            <a href="linea_temporal.html" class="nav-card" id="card-timeline">
+                <div class="card-header-line"></div>
+                <div class="card-icon">
+                    <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+                </div>
+                <div class="card-content">
+                    <div class="card-title">05. Línea Temporal</div>
+                    <div class="card-desc">
+                        Distribución de personajes en un eje cronológico estimado desde la creación hasta el exilio de Babilonia.
+                    </div>
+                    <div class="card-tags">
+                        <span class="card-tag">Cronología</span>
+                        <span class="card-tag">Eje de Eras</span>
+                        <span class="card-tag">Filtro Linaje</span>
+                    </div>
+                </div>
+                <div class="card-arrow">
+                    <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+                </div>
+            </a>
+
+            <!-- Estadísticas -->
+            <a href="estadisticas.html" class="nav-card" id="card-stats">
+                <div class="card-header-line"></div>
+                <div class="card-icon">
+                    <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                </div>
+                <div class="card-content">
+                    <div class="card-title">06. Panel de Estadísticas</div>
+                    <div class="card-desc">
+                        Gráficos interactivos de distribución de géneros, ranking de hijos, densidad por linajes y generaciones.
+                    </div>
+                    <div class="card-tags">
+                        <span class="card-tag">Chart.js</span>
+                        <span class="card-tag">Métricas KPIs</span>
+                        <span class="card-tag">Visualización</span>
+                    </div>
+                </div>
+                <div class="card-arrow">
+                    <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+                </div>
+            </a>
+
         </div>
     </section>
 
@@ -473,7 +528,86 @@
         Genealogía Bíblica · Crónicas · Documentación Técnica Monocroma
     </footer>
 
+    <script src="genealogia_data.js"></script>
     <script>
+        const people = {};
+        
+        function getCorreccionesData() {
+            return JSON.parse(localStorage.getItem("correcciones_genealogia") || '{"modificaciones":{},"nuevos":[]}');
+        }
+
+        function buildRelationshipMap() {
+            if (typeof GENEALOGIA_DATA === 'undefined') return;
+            const stored = getCorreccionesData();
+            if (stored.nuevos && stored.nuevos.length > 0) {
+                stored.nuevos.forEach(newP => {
+                    const idx = GENEALOGIA_DATA.findIndex(r => r["Hijos"] === newP["Hijos"] && r["Referencia"] === newP["Referencia"]);
+                    if (idx !== -1) GENEALOGIA_DATA.splice(idx, 1);
+                });
+                GENEALOGIA_DATA.push(...stored.nuevos);
+            }
+            GENEALOGIA_DATA.forEach(row => {
+                const name = row["Hijos"];
+                if (name && !people[name]) {
+                    people[name] = { name, gender: row["Género Hijos"] || "M" };
+                }
+            });
+        }
+
+        function normText(s) {
+            return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        }
+
+        function setupGlobalSearch() {
+            const input = document.getElementById("globalSearchInput");
+            const resultsDiv = document.getElementById("globalSearchResults");
+            const names = Object.keys(people).sort();
+
+            input.addEventListener("input", () => {
+                const q = normText(input.value.trim());
+                if (!q) {
+                    resultsDiv.innerHTML = "";
+                    resultsDiv.style.display = "none";
+                    return;
+                }
+
+                const matches = names.filter(n => normText(n).includes(q)).slice(0, 8);
+                if (matches.length === 0) {
+                    resultsDiv.innerHTML = `<div style="padding: 10px; color: var(--subtle); font-style: italic; font-size: 12px; border-bottom: none;">Sin resultados</div>`;
+                    resultsDiv.style.display = "block";
+                    return;
+                }
+
+                resultsDiv.innerHTML = "";
+                matches.forEach(name => {
+                    const p = people[name];
+                    const color = p.gender === "F" ? "var(--f-dot)" : "var(--m-dot)";
+                    const row = document.createElement("div");
+                    row.style.cssText = "padding: 8px 12px; border-bottom: 1px dashed var(--border-subtle); display: flex; align-items: center; justify-content: space-between; gap: 12px;";
+                    row.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 7px; height: 7px; border-radius: 50%; background: ${color}; border: 1.5px solid var(--border); flex-shrink:0;"></div>
+                            <span style="font-weight: 700; font-size: 12.5px; color: var(--text);">${name}</span>
+                        </div>
+                        <div style="display: flex; gap: 4px;">
+                            <a href="visor_genealogia.html?name=${encodeURIComponent(name)}" class="topbar-btn" style="padding: 2px 6px; font-size: 10px; box-shadow: 1px 1px 0px var(--border); text-decoration: none;">Ficha</a>
+                            <a href="arbol_genealogico.html?highlight=${encodeURIComponent(name)}" class="topbar-btn" style="padding: 2px 6px; font-size: 10px; box-shadow: 1px 1px 0px var(--border); text-decoration: none;">Árbol</a>
+                            <a href="grafo_relaciones.html?name=${encodeURIComponent(name)}" class="topbar-btn" style="padding: 2px 6px; font-size: 10px; box-shadow: 1px 1px 0px var(--border); text-decoration: none;">Grafo</a>
+                            <a href="mapa_geografico.html?name=${encodeURIComponent(name)}" class="topbar-btn" style="padding: 2px 6px; font-size: 10px; box-shadow: 1px 1px 0px var(--border); text-decoration: none;">Mapa</a>
+                        </div>
+                    `;
+                    resultsDiv.appendChild(row);
+                });
+                resultsDiv.style.display = "block";
+            });
+
+            document.addEventListener("click", e => {
+                if (!input.contains(e.target) && !resultsDiv.contains(e.target)) {
+                    resultsDiv.style.display = "none";
+                }
+            });
+        }
+
         // Theme
         const toggle = document.getElementById('themeToggle');
         const sun = document.getElementById('sunIcon'), moon = document.getElementById('moonIcon');
@@ -486,6 +620,19 @@
         toggle.addEventListener('click', () => {
             const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
             localStorage.setItem('theme', next); applyTheme(next);
+        });
+
+        // Initialize
+        window.addEventListener("DOMContentLoaded", () => {
+            buildRelationshipMap();
+            setupGlobalSearch();
+
+            // Register Service Worker for PWA
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registrado con éxito:', reg.scope))
+                    .catch(err => console.log('Error al registrar Service Worker:', err));
+            }
         });
     </script>
 </body>

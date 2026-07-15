@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genealogía Bíblica · Línea Temporal</title>
+    <meta name="description" content="Línea de tiempo interactiva de la genealogía bíblica desde Adán hasta Zorobabel con cronología estimada.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ── Neo-Skeuo Design tokens ──────────────────────────── */
+        :root {
+            --bg:             #faf6f0;
+            --surface:        #f4f0e8;
+            --surface-raised: #f7f6f2;
+            --surface-inset:  #dedad0;
+            --border:         #1a1917;
+            --border-subtle:  #7a7870;
+            --text:           #1a1917;
+            --muted:          #5a5850;
+            --subtle:         #8a8880;
+            --accent:         #1a1917;
+            --accent-bg:      #dedad0;
+            --m-dot:          #3b82f6;
+            --f-dot:          #e879a0;
+            --radius-sm:      0px;
+            --radius-md:      4px;
+            --shadow-block:   3px 3px 0px var(--border);
+        }
+        [data-theme="dark"] {
+            --bg:             #403d39;
+            --surface:        #32302d;
+            --surface-raised: #47423b;
+            --surface-inset:  #242321;
+            --border:         #faf6f0;
+            --border-subtle:  #8a8880;
+            --text:           #faf6f0;
+            --muted:          #b0ada6;
+            --subtle:         #6a6860;
+            --accent:         #faf6f0;
+            --accent-bg:      #242321;
+            --m-dot:          #60a5fa;
+            --f-dot:          #f472b6;
+            --shadow-block:   3px 3px 0px var(--border);
+        }
+
+        /* ── Reset ────────────────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { height: 100%; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            font-size: 13.5px;
+            line-height: 1.5;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Dotted grid background */
+        .dotted-grid {
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(var(--border-subtle) 1px, transparent 1px);
+            background-size: 20px 20px;
+            opacity: 0.08;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Spinner */
+        #loadingOverlay {
+            position: fixed; inset: 0; background: var(--bg);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999; flex-direction: column; gap: 16px;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .spinner {
+            width: 36px; height: 36px;
+            border: 2px solid var(--border); border-top-color: var(--border-subtle);
+            animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Top bar ──────────────────────────────────────────── */
+        .topbar {
+            height: 52px;
+            min-height: 52px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 20px;
+            background: var(--surface);
+            border-bottom: 2px solid var(--border);
+            flex-shrink: 0;
+            z-index: 50;
+        }
+        .topbar-brand {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+        }
+        .topbar-brand-dot {
+            width: 8px; height: 8px;
+            background: var(--text);
+            border: 1px solid var(--bg);
+            border-radius: 50%;
+        }
+        .topbar-sep { flex: 1; }
+        .topbar-btn {
+            display: flex; align-items: center; gap: 5px;
+            padding: 5px 12px;
+            font-size: 12px; font-weight: 600;
+            color: var(--text);
+            background: var(--surface-raised);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            text-decoration: none;
+            font-family: inherit;
+            box-shadow: 2px 2px 0px var(--border);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .topbar-btn:hover { border-color: var(--border); }
+        .topbar-btn:active, .topbar-btn.active {
+            transform: translate(2px, 2px);
+            box-shadow: none;
+        }
+        .topbar-nav-links { display: flex; gap: 12px; align-items: center; }
+        .menu-toggle {
+            display: none;
+            background: var(--surface-raised);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            padding: 6px;
+            color: var(--text);
+            box-shadow: 1.5px 1.5px 0px var(--border);
+        }
+        .menu-toggle svg { width: 18px; height: 18px; fill: currentColor; display: block; }
+
+        /* ── Workspace ────────────────────────────────────────── */
+        .workspace {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+            z-index: 5;
+        }
+
+        /* ── Controls bar ─────────────────────────────────────── */
+        .controls-bar {
+            height: 48px;
+            min-height: 48px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 16px;
+            z-index: 10;
+            flex-shrink: 0;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .controls-bar::-webkit-scrollbar { display: none; }
+        .filter-pills { display: flex; gap: 6px; align-items: center; }
+        .pill-btn {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--surface-raised);
+            color: var(--text);
+            cursor: pointer;
+            box-shadow: 1px 1px 0px var(--border);
+        }
+        .pill-btn.active {
+            background: var(--surface-inset);
+            box-shadow: none;
+            transform: translate(1px, 1px);
+        }
+
+        .zoom-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+        .zoom-slider {
+            width: 120px;
+            accent-color: var(--border);
+            cursor: pointer;
+        }
+
+        /* ── Main timeline canvas ─────────────────────────────── */
+        .timeline-container {
+            flex: 1;
+            overflow: auto;
+            position: relative;
+            outline: none;
+        }
+        .timeline-svg {
+            display: block;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Era label styles */
+        .era-line {
+            stroke: var(--border-subtle);
+            stroke-dasharray: 4 4;
+            opacity: 0.3;
+        }
+        .era-text {
+            font-size: 10px;
+            font-weight: 700;
+            fill: var(--subtle);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Node elements */
+        .timeline-node {
+            cursor: pointer;
+            transition: r 0.1s ease, stroke-width 0.1s ease;
+        }
+        .timeline-node:hover {
+            r: 8px;
+            stroke-width: 3px;
+        }
+        .timeline-node.active {
+            r: 10px;
+            stroke-width: 4px;
+            stroke: var(--border);
+        }
+
+        /* ── Tooltip ──────────────────────────────────────────── */
+        .timeline-tooltip {
+            position: absolute;
+            background: var(--surface-raised);
+            border: 2px solid var(--border);
+            padding: 8px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            z-index: 1000;
+            box-shadow: 2px 2px 0px var(--border);
+            max-width: 220px;
+        }
+        .tooltip-title { font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
+        .tooltip-desc { color: var(--muted); font-size: 10.5px; }
+
+        /* ── Side detail drawer ───────────────────────────────── */
+        .detail-drawer {
+            width: 300px;
+            border-left: 2px solid var(--border);
+            background: var(--surface);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            z-index: 40;
+            flex-shrink: 0;
+            transition: transform 0.3s ease;
+        }
+        .detail-drawer.collapsed {
+            transform: translateX(100%);
+            display: none;
+        }
+        .drawer-header {
+            padding: 16px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--surface-raised);
+        }
+        .drawer-body {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .avatar-block {
+            width: 80px; height: 80px;
+            border-radius: var(--radius-sm);
+            border: 2px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 32px; font-weight: 800; color: white;
+            box-shadow: 2px 2px 0px var(--border);
+            margin-bottom: 12px;
+        }
+
+        .meta-card {
+            background: var(--surface-raised);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            box-shadow: 2px 2px 0px var(--border);
+            font-size: 12px;
+        }
+        .meta-row {
+            display: flex;
+            padding: 6px 10px;
+            border-bottom: 1px dashed var(--border-subtle);
+        }
+        .meta-row:last-child { border-bottom: none; }
+        .meta-key { font-weight: 700; color: var(--subtle); text-transform: uppercase; font-size: 9.5px; width: 80px; }
+        .meta-val { font-weight: 600; color: var(--text); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .topbar-nav-links { display: none; }
+            .menu-toggle { display: block; }
+            .workspace { flex-direction: column; }
+            .detail-drawer {
+                position: fixed;
+                right: 0; top: 52px; bottom: 0;
+                width: 100%;
+                z-index: 100;
+                border-left: none;
+                border-top: 2px solid var(--border);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dotted-grid"></div>
+
+    <!-- Loading Spinner Overlay -->
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <span style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;">[Procesando Cronología]</span>
+    </div>
+
+    <!-- Top bar -->
+    <header class="topbar">
+        <button class="menu-toggle" id="menuToggle" aria-label="Menu">
+            <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        </button>
+        <div class="topbar-brand">
+            <div class="topbar-brand-dot"></div>
+            Genealogía Bíblica
+        </div>
+        <span style="font-size:11px; color:var(--subtle); font-family:monospace; margin-left:4px;">Línea Temporal</span>
+        
+        <div class="topbar-sep"></div>
+
+        <div class="topbar-nav-links">
+            <a href="index.html" class="topbar-btn">Inicio</a>
+            <a href="visor_genealogia.html" class="topbar-btn">Fichas</a>
+            <a href="arbol_genealogico.html" class="topbar-btn">Árbol gráfico</a>
+            <a href="grafo_relaciones.html" class="topbar-btn">Grafo</a>
+            <a href="mapa_geografico.html" class="topbar-btn">Mapa</a>
+            <a href="estadisticas.html" class="topbar-btn">Estadísticas</a>
+        </div>
+        
+        <button class="topbar-btn" id="themeToggle" aria-label="Cambiar tema">
+            <svg id="sunIcon" style="display:none" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3zm0-11c-.55 0-1-.45-1-1V2c0-.55.45-1 1-1s1 .45 1 1v1c0 .55-.45 1-1 1zm0 16c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1s1-.45 1-1v-1c0-.55-.45-1-1-1zm8-8c0-.55-.45-1-1-1h-1c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zM6 12c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zm11.66-5.66l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zm-11.31 11.3l-.71.71c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0l.71-.71c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0zm11.31.01l-.71.71c-.39-.39-1.02-.39-1.41 0l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zM6.35 6.34l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41z"/></svg>
+            <svg id="moonIcon" viewBox="0 0 24 24"><path d="M12.3 22h-.1c-5.5 0-10-4.5-10-10 0-4.8 3.5-8.9 8.3-9.7.6-.1 1.1.4 1 1-.4 2.4.4 4.9 2.1 6.6 1.7 1.7 4.2 2.5 6.6 2.1.6-.1 1.1.4 1 1-.8 4.8-4.9 8.3-9.7 8.3z"/></svg>
+            Tema
+        </button>
+    </header>
+
+    <!-- Controls -->
+    <div class="controls-bar">
+        <div class="filter-pills" id="linajeFilters">
+            <button class="pill-btn active" data-linaje="Todos">Todos</button>
+            <button class="pill-btn" data-linaje="Adam">Adam</button>
+            <button class="pill-btn" data-linaje="Noé">Noé</button>
+            <button class="pill-btn" data-linaje="Abraham">Abraham</button>
+            <button class="pill-btn" data-linaje="Israel">Israel</button>
+            <button class="pill-btn" data-linaje="David">David</button>
+        </div>
+
+        <div class="zoom-wrap">
+            <span>Escala</span>
+            <button class="pill-btn" onclick="adjustZoom(-0.5)">-</button>
+            <input type="range" class="zoom-slider" id="zoomSlider" min="0.5" max="3" step="0.1" value="1.2">
+            <button class="pill-btn" onclick="adjustZoom(0.5)">+</button>
+        </div>
+    </div>
+
+    <!-- Workspace -->
+    <div class="workspace">
+        <!-- Canvas Timeline -->
+        <div class="timeline-container" id="timelineContainer" tabindex="0">
+            <svg class="timeline-svg" id="timelineSvg" width="3000" height="600"></svg>
+            <div class="timeline-tooltip" id="timelineTooltip"></div>
+        </div>
+
+        <!-- Detail Drawer -->
+        <aside class="detail-drawer collapsed" id="detailDrawer">
+            <div class="drawer-header">
+                <span style="font-weight:700; text-transform:uppercase; font-size:11px;">Ficha Temporal</span>
+                <button class="topbar-btn" onclick="closeDrawer()" style="padding:2px 8px; font-size:11px;">Cerrar</button>
+            </div>
+            <div class="drawer-body">
+                <div class="avatar-block" id="drawAvatar">?</div>
+                <h3 id="drawName" style="font-size:18px; font-weight:800; text-transform:uppercase;"></h3>
+                <p id="drawMeaning" style="font-size:12px; font-style:italic; color:var(--muted);"></p>
+                
+                <div class="meta-card">
+                    <div class="meta-row"><span class="meta-key">Fecha Est.</span><span class="meta-val" id="drawDate"></span></div>
+                    <div class="meta-row"><span class="meta-key">Género</span><span class="meta-val" id="drawGender"></span></div>
+                    <div class="meta-row"><span class="meta-key">Generación</span><span class="meta-val" id="drawGen"></span></div>
+                    <div class="meta-row"><span class="meta-key">Padre</span><span class="meta-val" id="drawFather"></span></div>
+                    <div class="meta-row"><span class="meta-key">Madre</span><span class="meta-val" id="drawMother"></span></div>
+                    <div class="meta-row"><span class="meta-key">Origen</span><span class="meta-val" id="drawBirth"></span></div>
+                </div>
+
+                <div style="border-top:1px dashed var(--border-subtle); padding-top:12px;">
+                    <span style="font-size:10px; font-weight:700; color:var(--subtle); text-transform:uppercase; display:block; margin-bottom:6px;">Notas</span>
+                    <p id="drawNotes" style="font-size:12.5px; color:var(--muted); line-height:1.6;"></p>
+                </div>
+
+                <a id="drawLink" href="#" target="_blank" class="topbar-btn" style="width:100%; justify-content:center; margin-top:8px;">Ver Ficha Completa →</a>
+            </div>
+        </aside>
+    </div>
+
+    <script src="genealogia_data.js"></script>
+    <script>
+        const people = {};
+        let currentLineage = "Todos";
+        let zoomLevel = 1.2;
+
+        const ESTIMATED_DATES = {
+            'Adam': -4000, 'Set': -3870, 'Enós': -3765, 'Cainán': -3675,
+            'Mahalaleel': -3605, 'Jared': -3540, 'Enoc': -3378, 'Matusalén': -3313,
+            'Lamec': -3126, 'Noé': -2944, 'Sem': -2442, 'Cam': -2444,
+            'Jafet': -2444, 'Arfaxad': -2342, 'Sala': -2307, 'Heber': -2277,
+            'Peleg': -2243, 'Reu': -2213, 'Serug': -2181, 'Nacor': -2151,
+            'Taré': -2122, 'Abraham': -2052, 'Isaac': -1952, 'Israel': -1892,
+            'Judá': -1860, 'José': -1845, 'Leví': -1860, 'Rubén': -1862,
+            'Simeón': -1861, 'Dan': -1858, 'Neftalí': -1857, 'Gad': -1856,
+            'Aser': -1855, 'Isacar': -1854, 'Zabulón': -1853, 'Benjamín': -1840,
+            'Moisés': -1526, 'Aarón': -1529, 'David': -1040, 'Salomón': -990,
+            'Roboam': -970, 'Abías': -950, 'Asa': -930, 'Josafat': -885,
+            'Joram': -860, 'Uzías': -810, 'Jotam': -758, 'Acaz': -742,
+            'Ezequías': -726, 'Manasés': -697, 'Amón': -642, 'Josías': -640,
+            'Joacim': -609, 'Sedequías': -597, 'Zorobabel': -520
+        };
+
+        const ERAS = [
+            { name: "Creación", date: -4000 },
+            { name: "Diluvio", date: -2344 },
+            { name: "Patriarcas", date: -2000 },
+            { name: "Éxodo", date: -1450 },
+            { name: "Monarquía", date: -1040 },
+            { name: "Exilio", date: -586 }
+        ];
+
+        const localPatriarchDetails = {
+            "Adam": { lugar:"Jardín del Edén", significado:"Derivado del hebreo «אָדָם» (adam), significa «hombre» o «humanidad».", cruzada:"1 Crónicas 1 [Cruces: Adam: Génesis 1:26-27, 2:7, 5:1-5; Lucas 3:38]", adicional:"Primer ser humano creado por Dios." },
+            "Eva":  { lugar:"Jardín del Edén", significado:"Del hebreo «חַוָּה» (Chavah), que significa «vida».", cruzada:"Génesis 2:21-25, 3:1-20", adicional:"Primera mujer, creada de la costilla de Adán." },
+            "Set":  { lugar:"Fuera del Edén", significado:"Del hebreo «שֵׁת» (Sheth), que significa «sustituto».", cruzada:"1 Crónicas 1 [Cruces: Set: Génesis 4:25-26, 5:3-8]", adicional:"Tercer hijo de Adán y Eva." },
+            "Noé":  { lugar:"Mesopotamia", significado:"Del hebreo «נֹחั» (Noach), que significa «descanso».", cruzada:"1 Crónicas 1 [Cruces: Noé: Génesis 5:28-32, caps. 6-9]", adicional:"Construyó el arca para salvar a su familia." },
+            "Abraham": { lugar:"Ur de los Caldeos", significado:"Del hebreo «אַבְרָהָם» (Avraham), «padre de multitudes».", cruzada:"1 Crónicas 1 [Cruces: Abraham: Génesis 11:26-32, caps. 12-25]", adicional:"Patriarca de la fe." },
+            "Israel": { lugar:"Padan-aram", significado:"Del hebreo «יִשְׂרָאֵל» (Yisrael), «el que lucha con Dios».", cruzada:"1 Crónicas 2 [Cruces: Israel: Génesis 25-35, 46-50]", adicional:"Hijo de Isaac. Padre de las 12 tribus." },
+            "David": { lugar:"Belén", significado:"Del hebreo «דָּוִד» (David), que significa «amado».", cruzada:"1 Crónicas 3 [Cruces: David: 1 Samuel 16-31; 2 Samuel]", adicional:"Segundo rey de Israel unificado." },
+            "Salomón": { lugar:"Jerusalén", significado:"Del hebreo «שְׁלֹמֹה» (Shlomoh), «pacífico».", cruzada:"1 Crónicas 3 [Cruces: Salomón: 2 Samuel 12:24; 1 Reyes 1-11]", adicional:"Hijo de David. Edificó el Primer Templo." }
+        };
+
+        function getCorreccionesData() {
+            return JSON.parse(localStorage.getItem("correcciones_genealogia") || '{"modificaciones":{},"nuevos":[]}');
+        }
+
+        function buildRelationshipMap() {
+            if (typeof GENEALOGIA_DATA === 'undefined') return;
+            const stored = getCorreccionesData();
+            if (stored.nuevos && stored.nuevos.length > 0) {
+                stored.nuevos.forEach(newP => {
+                    const idx = GENEALOGIA_DATA.findIndex(r => r["Hijos"] === newP["Hijos"] && r["Referencia"] === newP["Referencia"]);
+                    if (idx !== -1) GENEALOGIA_DATA.splice(idx, 1);
+                });
+                GENEALOGIA_DATA.push(...stored.nuevos);
+            }
+
+            function getOrCreate(name) {
+                if (!name) return null;
+                const n = name.trim();
+                if (!n) return null;
+                if (!people[n]) people[n] = { name:n, gender:"M", father:"", mother:"", birthPlace:"", spouses:new Set(), children:[], notes:"", reference:"", meaning:"" };
+                return people[n];
+            }
+
+            GENEALOGIA_DATA.forEach(row => {
+                const childName = row["Hijos"], fatherName = row["Padre"], motherName = row["Madre"];
+                const child = getOrCreate(childName), father = getOrCreate(fatherName), mother = getOrCreate(motherName);
+                if (child) {
+                    if (fatherName) child.father = fatherName;
+                    if (motherName) child.mother = motherName;
+                    child.gender = row["Género Hijos"] || "M";
+                    const rawPlace = row["Lugar de nacimiento"] || "";
+                    child.birthPlace = rawPlace.replace(/\s*\(padre\)\s*/i, "").trim();
+                    const fullInfo = row["Información Adicional"] || row["Notas"] || "";
+                    const childMatch = fullInfo.match(/Sobre (?:el hijo|la hija) \([^)]+\):\s*(.+?)(?:\s*\|\s*Sobre (?:el padre|la madre)|$)/i);
+                    child.notes = childMatch ? childMatch[1].trim() : fullInfo;
+                    child.reference = row["Referencia"] || "";
+                }
+                if (father && childName) {
+                    father.children.push({ name:childName, gender:row["Género Hijos"]||"M" });
+                    if (motherName) { father.spouses.add(motherName); mother.spouses.add(fatherName); }
+                }
+                if (mother && childName) mother.children.push({ name:childName, gender:row["Género Hijos"]||"M" });
+                if (fatherName && row["Significado del Nombre (Padre)"]) father.meaning = row["Significado del Nombre (Padre)"];
+            });
+
+            Object.keys(localPatriarchDetails).forEach(name => {
+                const local = localPatriarchDetails[name], p = getOrCreate(name);
+                if (!p) return;
+                if (local.lugar) p.birthPlace = local.lugar;
+                if (local.significado) p.meaning = local.significado;
+                if (local.adicional) p.notes = local.adicional;
+                if (local.cruzada) p.reference = local.cruzada;
+            });
+
+            if (stored.modificaciones) {
+                Object.keys(stored.modificaciones).forEach(name => {
+                    const p = getOrCreate(name);
+                    if (p) {
+                        const mods = stored.modificaciones[name];
+                        if (mods.meaning !== undefined) p.meaning = mods.meaning;
+                        if (mods.birthPlace !== undefined) p.birthPlace = mods.birthPlace;
+                        if (mods.notes !== undefined) p.notes = mods.notes;
+                        if (mods.gender !== undefined) p.gender = mods.gender;
+                        if (mods.father !== undefined) p.father = mods.father;
+                        if (mods.mother !== undefined) p.mother = mods.mother;
+                    }
+                });
+            }
+        }
+
+        const generationCache = {};
+        function getGeneration(name) {
+            if (generationCache[name] !== undefined) return generationCache[name];
+            if (name.toLowerCase() === "adam") return 0;
+            
+            const queue = [[name, 0]];
+            const visited = new Set([name]);
+            
+            while (queue.length > 0) {
+                const [currName, depth] = queue.shift();
+                const curr = people[currName];
+                if (!curr) continue;
+                
+                if (curr.father) {
+                    if (curr.father.toLowerCase() === "adam") {
+                        generationCache[name] = depth + 1;
+                        return depth + 1;
+                    }
+                    if (!visited.has(curr.father)) {
+                        visited.add(curr.father);
+                        queue.push([curr.father, depth + 1]);
+                    }
+                }
+            }
+            return 99; // Default if not connected directly to Adam
+        }
+
+        function getLineagePath(name) {
+            const path = [], visited = new Set();
+            let cur = people[name];
+            while (cur && !visited.has(cur.name)) {
+                path.unshift(cur.name);
+                visited.add(cur.name);
+                if (cur.name.toLowerCase() === "adam") break;
+                cur = people[cur.father];
+            }
+            return path;
+        }
+
+        function belongsToLineage(name, rootLineage) {
+            if (rootLineage === "Todos") return true;
+            return getLineagePath(name).includes(rootLineage);
+        }
+
+        function normText(s) {
+            return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        }
+
+        function avatarGradient(name) {
+            let h = 0;
+            for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+            const h1 = Math.abs(h % 360), h2 = (h1 + 55) % 360;
+            return `linear-gradient(135deg, hsl(${h1},65%,48%) 0%, hsl(${h2},65%,38%) 100%)`;
+        }
+
+        // Interpolate dates
+        const dateCache = {};
+        function getEstimatedDate(name) {
+            if (dateCache[name] !== undefined) return dateCache[name];
+            if (ESTIMATED_DATES[name] !== undefined) {
+                dateCache[name] = ESTIMATED_DATES[name];
+                return ESTIMATED_DATES[name];
+            }
+            const p = people[name];
+            if (!p) return null;
+            if (p.father) {
+                const fDate = getEstimatedDate(p.father);
+                if (fDate !== null) {
+                    const est = fDate + 33; // Average generation gap
+                    dateCache[name] = est;
+                    return est;
+                }
+            }
+            const gen = getGeneration(name);
+            if (typeof gen === 'number' && gen !== 99) {
+                const est = -4000 + (gen * 33);
+                dateCache[name] = est;
+                return est;
+            }
+            return null;
+        }
+
+        // Render timeline
+        function renderTimeline() {
+            const svg = document.getElementById("timelineSvg");
+            svg.innerHTML = "";
+
+            const timelineW = 2400 * zoomLevel;
+            const timelineH = 500;
+            svg.setAttribute("width", timelineW);
+            svg.setAttribute("height", timelineH);
+
+            const minDate = -4100;
+            const maxDate = -400;
+
+            function getX(date) {
+                const ratio = (date - minDate) / (maxDate - minDate);
+                return 80 + ratio * (timelineW - 160);
+            }
+
+            // Draw grid lines
+            const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+            const gridColor = isDark ? "rgba(250,246,240,0.15)" : "rgba(26,25,23,0.1)";
+
+            // Draw eras background sections
+            ERAS.forEach((era, idx) => {
+                const nextEraDate = ERAS[idx + 1] ? ERAS[idx + 1].date : maxDate;
+                const xStart = getX(era.date);
+                const xEnd = getX(nextEraDate);
+
+                // Vertical era line
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute("x1", xStart);
+                line.setAttribute("y1", 30);
+                line.setAttribute("x2", xStart);
+                line.setAttribute("y2", timelineH - 30);
+                line.setAttribute("class", "era-line");
+                svg.appendChild(line);
+
+                // Era label
+                const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                label.setAttribute("x", xStart + 8);
+                label.setAttribute("y", 25);
+                label.setAttribute("class", "era-text");
+                label.textContent = `${era.name} (${Math.abs(era.date)} a.C.)`;
+                svg.appendChild(label);
+            });
+
+            // Draw main center axis line
+            const axis = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            axis.setAttribute("x1", 50);
+            axis.setAttribute("y1", timelineH / 2);
+            axis.setAttribute("x2", timelineW - 50);
+            axis.setAttribute("y2", timelineH / 2);
+            axis.setAttribute("stroke", "var(--border)");
+            axis.setAttribute("stroke-width", "2");
+            svg.appendChild(axis);
+
+            // Filter and position people nodes
+            const listToDraw = [];
+            Object.keys(people).forEach(name => {
+                const p = people[name];
+                if (!belongsToLineage(name, currentLineage)) return;
+                const d = getEstimatedDate(name);
+                if (d === null) return;
+                listToDraw.push({ name, gender: p.gender, date: d, gen: getGeneration(name) });
+            });
+
+            // Calculate node layout positions (stack by generation to avoid single axis overlap)
+            listToDraw.forEach(item => {
+                const x = getX(item.date);
+                
+                // Y Position is generation based: older top, newer bottom
+                // Max generation is typically ~25-30
+                const gen = item.gen === 99 ? 12 : item.gen;
+                const y = 60 + ((gen % 18) / 18) * (timelineH - 120);
+
+                // Group circle node
+                const node = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                node.setAttribute("cx", x);
+                node.setAttribute("cy", y);
+                node.setAttribute("r", "5.5");
+                node.setAttribute("class", "timeline-node");
+                node.setAttribute("fill", item.gender === "F" ? "var(--f-dot)" : "var(--m-dot)");
+                node.setAttribute("stroke", "var(--border)");
+                node.setAttribute("stroke-width", "1.5");
+                node.dataset.name = item.name;
+
+                // Event handlers
+                node.addEventListener("mouseenter", e => showTooltip(e, item));
+                node.addEventListener("mouseleave", hideTooltip);
+                node.addEventListener("click", () => selectNode(item.name));
+
+                svg.appendChild(node);
+            });
+        }
+
+        // Tooltip logic
+        const tooltip = document.getElementById("timelineTooltip");
+        function showTooltip(e, item) {
+            const p = people[item.name];
+            const dateStr = item.date < 0 ? `${Math.abs(Math.round(item.date))} a.C.` : `${Math.round(item.date)} d.C.`;
+            tooltip.innerHTML = `
+                <div class="tooltip-title">${item.name}</div>
+                <div class="tooltip-desc">Padre: ${p.father || '—'}</div>
+                <div class="tooltip-desc">Cronología: ${dateStr}</div>
+                <div class="tooltip-desc">Generación: ${item.gen !== 99 ? item.gen : '—'}</div>
+            `;
+            tooltip.style.opacity = "1";
+            
+            const containerRect = document.getElementById("timelineContainer").getBoundingClientRect();
+            const x = e.clientX - containerRect.left + 15;
+            const y = e.clientY - containerRect.top - 40;
+            tooltip.style.left = `${x}px`;
+            tooltip.style.top = `${y}px`;
+        }
+
+        function hideTooltip() {
+            tooltip.style.opacity = "0";
+        }
+
+        // Selection & drawer logic
+        function selectNode(name) {
+            const nodes = document.querySelectorAll(".timeline-node");
+            nodes.forEach(n => {
+                n.classList.toggle("active", n.dataset.name === name);
+            });
+
+            const p = people[name];
+            if (!p) return;
+
+            document.getElementById("drawName").textContent = p.name;
+            document.getElementById("drawMeaning").textContent = p.meaning || "Significado del nombre no registrado.";
+            
+            const date = getEstimatedDate(name);
+            const dateStr = date ? (date < 0 ? `${Math.abs(Math.round(date))} a.C. (estimada)` : `${Math.round(date)} d.C.`) : "No determinada";
+            document.getElementById("drawDate").textContent = dateStr;
+
+            document.getElementById("drawGender").textContent = p.gender === "M" ? "Masculino" : "Femenino";
+            
+            const gen = getGeneration(name);
+            document.getElementById("drawGen").textContent = gen !== 99 ? `${gen}ª desde Adán` : "No determinado";
+            
+            document.getElementById("drawFather").textContent = p.father || "—";
+            document.getElementById("drawMother").textContent = p.mother || "—";
+            document.getElementById("drawBirth").textContent = p.birthPlace || "—";
+            document.getElementById("drawNotes").textContent = p.notes || "Sin información biográfica adicional.";
+            document.getElementById("drawLink").href = `visor_genealogia.html?name=${encodeURIComponent(p.name)}`;
+
+            const avatar = document.getElementById("drawAvatar");
+            avatar.textContent = p.name.charAt(0);
+            avatar.style.background = avatarGradient(p.name);
+
+            document.getElementById("detailDrawer").classList.remove("collapsed");
+        }
+
+        function closeDrawer() {
+            document.getElementById("detailDrawer").classList.add("collapsed");
+            document.querySelectorAll(".timeline-node").forEach(n => n.classList.remove("active"));
+        }
+
+        function adjustZoom(amount) {
+            zoomLevel = Math.max(0.5, Math.min(3, zoomLevel + amount));
+            document.getElementById("zoomSlider").value = zoomLevel;
+            renderTimeline();
+        }
+
+        function setupTheme() {
+            const toggle = document.getElementById('themeToggle');
+            const sun = document.getElementById('sunIcon'), moon = document.getElementById('moonIcon');
+            const apply = t => {
+                document.documentElement.setAttribute('data-theme', t);
+                sun.style.display = t === 'dark' ? 'block' : 'none';
+                moon.style.display = t === 'dark' ? 'none' : 'block';
+                renderTimeline();
+            };
+            apply(localStorage.getItem('theme') || 'light');
+            toggle.addEventListener('click', () => {
+                const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+                localStorage.setItem('theme', next); apply(next);
+            });
+        }
+
+        function setupMobileNav() {
+            const toggle = document.getElementById("menuToggle");
+            const nav = document.querySelector(".mobile-nav");
+            toggle.addEventListener("click", () => {
+                nav.style.display = nav.style.display === "flex" ? "none" : "flex";
+            });
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            buildRelationshipMap();
+            setupTheme();
+            setupMobileNav();
+
+            // Zoom slider event
+            const slider = document.getElementById("zoomSlider");
+            slider.addEventListener("input", e => {
+                zoomLevel = parseFloat(e.target.value);
+                renderTimeline();
+            });
+
+            // Lineage filter pills
+            document.querySelectorAll(".filter-pills .pill-btn").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    document.querySelectorAll(".filter-pills .pill-btn").forEach(b => b.classList.remove("active"));
+                    btn.classList.add("active");
+                    currentLineage = btn.dataset.linaje;
+                    renderTimeline();
+                });
+            });
+
+            // Hide overlay
+            document.getElementById("loadingOverlay").style.opacity = "0";
+            setTimeout(() => {
+                document.getElementById("loadingOverlay").style.display = "none";
+                renderTimeline();
+            }, 300);
+        });
+    </script>
+</body>
+</html>
