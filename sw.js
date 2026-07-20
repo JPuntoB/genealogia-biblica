@@ -1,4 +1,4 @@
-const CACHE_NAME = 'genealogia-biblica-v2';
+const CACHE_NAME = 'genealogia-biblica-v3';
 const ASSETS = [
     './',
     './index.html',

@@ -435,7 +435,7 @@
         </aside>
     </div>
 
-    <script src="genealogia_data.js"></script>
+    <script defer src="genealogia_data.js"></script>
     <script>
         const people = {};
         let currentLineage = "Todos";
@@ -841,12 +841,15 @@
                 });
             });
 
-            // Hide overlay
-            document.getElementById("loadingOverlay").style.opacity = "0";
+            // Hide overlay first, then render on next frame so spinner disappears immediately
+            const overlay = document.getElementById("loadingOverlay");
+            overlay.style.opacity = "0";
+            overlay.style.visibility = "hidden";
             setTimeout(() => {
-                document.getElementById("loadingOverlay").style.display = "none";
-                renderTimeline();
-            }, 300);
+                overlay.style.display = "none";
+                // Use rAF so browser paints the "hidden spinner" frame before doing heavy SVG work
+                requestAnimationFrame(() => renderTimeline());
+            }, 150);
         });
     </script>
 </body>
