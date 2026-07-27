@@ -537,7 +537,7 @@
     <!-- Floating tooltip -->
     <div class="tooltip" id="hoverTooltip"></div>
 
-    <script src="genealogia_data.js"></script>
+    <script defer src="genealogia_data.js"></script>
     <script>
         const people = {};
         let selectedLineage = "Todos";
@@ -832,8 +832,7 @@
         }
 
         window.addEventListener("DOMContentLoaded", () => {
-            buildRelationshipMap();
-            initGraph();
+            // Aplicar tema inmediatamente (sin esperar datos)
             setupTheme();
             setupResponsive();
 
@@ -852,7 +851,6 @@
                     btn.classList.add("active");
                     selectedLineage = btn.dataset.val;
                     initGraph();
-                    
                     if (window.innerWidth <= 768) {
                         document.getElementById("sidebarLeft").classList.remove("open");
                         document.getElementById("graphBackdrop").style.display = "none";
@@ -872,16 +870,26 @@
                 toggleSp.classList.toggle("active", !showSpouses);
                 toggleSp.textContent = showSpouses ? "Mostrar" : "Ocultar";
                 initGraph();
-
                 if (window.innerWidth <= 768) {
                     document.getElementById("sidebarLeft").classList.remove("open");
                     document.getElementById("graphBackdrop").style.display = "none";
                 }
             });
 
-            const overlay = document.getElementById("loadingOverlay");
-            overlay.style.opacity = "0";
-            setTimeout(() => overlay.style.display = "none", 300);
+            // Esperar a GENEALOGIA_DATA con polling (defer puede no haber terminado aún)
+            function initWhenReady() {
+                if (typeof GENEALOGIA_DATA !== 'undefined') {
+                    buildRelationshipMap();
+                    initGraph();
+
+                    const overlay = document.getElementById("loadingOverlay");
+                    overlay.style.opacity = "0";
+                    setTimeout(() => overlay.style.display = "none", 300);
+                } else {
+                    setTimeout(initWhenReady, 50);
+                }
+            }
+            initWhenReady();
         });
     </script>
 </body>

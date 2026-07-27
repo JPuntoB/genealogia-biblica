@@ -497,7 +497,7 @@
 
     </div>
 
-    <script src="genealogia_data.js"></script>
+    <script defer src="genealogia_data.js"></script>
     <script>
         const people = {};
         
@@ -761,17 +761,12 @@
         }
 
         window.addEventListener("DOMContentLoaded", () => {
-            buildRelationshipMap();
-            initMap();
-            populateMarkers();
+            // Aplicar tema y mapa base inmediatamente (sin esperar datos)
             setupTheme();
             setupResponsive();
+            initMap();
 
-            const overlay = document.getElementById("loadingOverlay");
-            overlay.style.opacity = "0";
-            setTimeout(() => overlay.style.display = "none", 300);
-
-            // Filter actions
+            // Filter actions (se registran aunque los datos aún no estén)
             document.querySelectorAll("#lineageFilter .pill").forEach(btn => {
                 btn.addEventListener("click", () => {
                     document.querySelectorAll("#lineageFilter .pill").forEach(b => b.classList.remove("active"));
@@ -779,7 +774,6 @@
                     selectedLineage = btn.dataset.val;
                     populateMarkers();
                     document.getElementById("infoPanel").style.display = "none";
-
                     if (window.innerWidth <= 768) {
                         document.getElementById("sidebar").classList.remove("open");
                         document.getElementById("mapBackdrop").style.display = "none";
@@ -794,13 +788,27 @@
                     selectedGender = btn.dataset.val;
                     populateMarkers();
                     document.getElementById("infoPanel").style.display = "none";
-
                     if (window.innerWidth <= 768) {
                         document.getElementById("sidebar").classList.remove("open");
                         document.getElementById("mapBackdrop").style.display = "none";
                     }
                 });
             });
+
+            // Esperar a GENEALOGIA_DATA con polling (defer puede no haber terminado aún)
+            function initWhenReady() {
+                if (typeof GENEALOGIA_DATA !== 'undefined') {
+                    buildRelationshipMap();
+                    populateMarkers();
+
+                    const overlay = document.getElementById("loadingOverlay");
+                    overlay.style.opacity = "0";
+                    setTimeout(() => overlay.style.display = "none", 300);
+                } else {
+                    setTimeout(initWhenReady, 50);
+                }
+            }
+            initWhenReady();
         });
     </script>
 </body>
