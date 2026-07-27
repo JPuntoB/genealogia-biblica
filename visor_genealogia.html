@@ -1045,7 +1045,7 @@
 
     <span class="copied-tooltip" id="copiedTooltip">¡Copiado!</span>
 
-    <script src="genealogia_data.js"></script>
+    <script defer src="genealogia_data.js"></script>
     <script>
         const people = {};
         const historyNav = [];
@@ -2024,17 +2024,11 @@
         }
 
         window.addEventListener("DOMContentLoaded", () => {
-            buildRelationshipMap();
-            setupIndexList();
-            setupSearch();
+            // Aplicar tema inmediatamente (sin esperar datos)
             setupTheme();
             setupMobileNav();
-            setupSharing();
-            setupComparison();
-            setupLineageFilter();
-            setupKeyboardShortcuts();
-            setupAccessibility();
 
+            // Conectar botones que no dependen de datos
             document.getElementById("btnBack").addEventListener("click", navigateBack);
             document.getElementById("btnForward").addEventListener("click", navigateForward);
             document.getElementById("btnEditar").addEventListener("click", toggleEditMode);
@@ -2043,20 +2037,36 @@
             document.getElementById("btnExportCorrections").addEventListener("click", exportCorrections);
             document.getElementById("btnClearCorrections").addEventListener("click", clearCorrecciones);
 
-            // Autocomplete on create modal fields
             setupAutocomplete(document.getElementById('newFatherInput'), document.getElementById('acNewFatherDrop'));
             setupAutocomplete(document.getElementById('newMotherInput'), document.getElementById('acNewMotherDrop'));
             setupAutocomplete(document.getElementById('newSpouseInput'), document.getElementById('acNewSpouseDrop'));
 
-            const overlay = document.getElementById("loadingOverlay");
-            overlay.style.opacity = "0";
-            setTimeout(() => overlay.style.display = "none", 300);
+            // Esperar a GENEALOGIA_DATA con polling (defer puede no haber terminado aún)
+            function initWhenReady() {
+                if (typeof GENEALOGIA_DATA !== 'undefined') {
+                    buildRelationshipMap();
+                    setupIndexList();
+                    setupSearch();
+                    setupSharing();
+                    setupComparison();
+                    setupLineageFilter();
+                    setupKeyboardShortcuts();
+                    setupAccessibility();
 
-            const params = new URLSearchParams(window.location.search);
-            const nameParam = params.get("name");
-            if (nameParam && people[nameParam]) selectPerson(nameParam);
-            else if (people["Adam"]) selectPerson("Adam");
-            else if (Object.keys(people).length > 0) selectPerson(Object.keys(people).sort()[0]);
+                    const overlay = document.getElementById("loadingOverlay");
+                    overlay.style.opacity = "0";
+                    setTimeout(() => overlay.style.display = "none", 300);
+
+                    const params = new URLSearchParams(window.location.search);
+                    const nameParam = params.get("name");
+                    if (nameParam && people[nameParam]) selectPerson(nameParam);
+                    else if (people["Adam"]) selectPerson("Adam");
+                    else if (Object.keys(people).length > 0) selectPerson(Object.keys(people).sort()[0]);
+                } else {
+                    setTimeout(initWhenReady, 50);
+                }
+            }
+            initWhenReady();
         });
     </script>
 </body>

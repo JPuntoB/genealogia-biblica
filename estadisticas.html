@@ -459,7 +459,7 @@
     </footer>
 
     <!-- Data Script -->
-    <script src="genealogia_data.js"></script>
+    <script defer src="genealogia_data.js"></script>
 
     <script>
         /* ── Global state ──────────────────────────────────── */
@@ -906,7 +906,7 @@
         /* ── Theme toggle ──────────────────────────────────── */
         function applyTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
-            localStorage.setItem('theme_genealogia', theme);
+            localStorage.setItem('theme', theme);
             document.getElementById('sunIcon').style.display = theme === 'dark' ? 'block' : 'none';
             document.getElementById('moonIcon').style.display = theme === 'dark' ? 'none' : 'block';
 
@@ -933,22 +933,29 @@
 
         /* ── Init ──────────────────────────────────────────── */
         window.addEventListener('DOMContentLoaded', () => {
-            // Restore theme
-            const saved = localStorage.getItem('theme_genealogia');
+            // Restaurar tema usando la clave unificada 'theme'
+            const saved = localStorage.getItem('theme');
             if (saved === 'dark') applyTheme('dark');
+            else applyTheme('light');
 
-            setTimeout(() => {
-                buildRelationshipMap();
-                const stats = computeStats();
-                populateKPIs(stats);
-                buildCharts(stats);
+            // Esperar a GENEALOGIA_DATA con polling (defer puede no haber terminado aún)
+            function initWhenReady() {
+                if (typeof GENEALOGIA_DATA !== 'undefined') {
+                    buildRelationshipMap();
+                    const stats = computeStats();
+                    populateKPIs(stats);
+                    buildCharts(stats);
 
-                // Hide spinner
-                const overlay = document.getElementById('loadingOverlay');
-                overlay.style.opacity = '0';
-                overlay.style.visibility = 'hidden';
-                setTimeout(() => overlay.style.display = 'none', 300);
-            }, 100);
+                    // Hide spinner
+                    const overlay = document.getElementById('loadingOverlay');
+                    overlay.style.opacity = '0';
+                    overlay.style.visibility = 'hidden';
+                    setTimeout(() => overlay.style.display = 'none', 300);
+                } else {
+                    setTimeout(initWhenReady, 50);
+                }
+            }
+            initWhenReady();
         });
     </script>
 

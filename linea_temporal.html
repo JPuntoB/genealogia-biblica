@@ -820,7 +820,7 @@
         }
 
         window.addEventListener("DOMContentLoaded", () => {
-            buildRelationshipMap();
+            // Aplicar tema inmediatamente (sin esperar datos)
             setupTheme();
             setupMobileNav();
 
@@ -841,15 +841,23 @@
                 });
             });
 
-            // Hide overlay first, then render on next frame so spinner disappears immediately
-            const overlay = document.getElementById("loadingOverlay");
-            overlay.style.opacity = "0";
-            overlay.style.visibility = "hidden";
-            setTimeout(() => {
-                overlay.style.display = "none";
-                // Use rAF so browser paints the "hidden spinner" frame before doing heavy SVG work
-                requestAnimationFrame(() => renderTimeline());
-            }, 150);
+            // Esperar a GENEALOGIA_DATA con polling (defer puede no haber terminado aún)
+            function initWhenReady() {
+                if (typeof GENEALOGIA_DATA !== 'undefined') {
+                    buildRelationshipMap();
+
+                    const overlay = document.getElementById("loadingOverlay");
+                    overlay.style.opacity = "0";
+                    overlay.style.visibility = "hidden";
+                    setTimeout(() => {
+                        overlay.style.display = "none";
+                        requestAnimationFrame(() => renderTimeline());
+                    }, 150);
+                } else {
+                    setTimeout(initWhenReady, 50);
+                }
+            }
+            initWhenReady();
         });
     </script>
 </body>
