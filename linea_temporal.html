@@ -328,6 +328,20 @@
         .meta-key { font-weight: 700; color: var(--subtle); text-transform: uppercase; font-size: 9.5px; width: 80px; }
         .meta-val { font-weight: 600; color: var(--text); }
 
+        /* Slidedown navigation */
+        .nav-overlay {
+            display: none;
+            position: absolute;
+            top: 52px; left: 0; right: 0;
+            background: var(--surface);
+            border-bottom: 2px solid var(--border);
+            z-index: 100;
+            flex-direction: column;
+            padding: 16px;
+            gap: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
         /* Responsive */
         @media (max-width: 900px) {
             .topbar-mono-label { display: none; }
@@ -339,6 +353,7 @@
             .topbar-brand-text { display: none; }
             .theme-label { display: none; }
             .menu-toggle { display: block; }
+            .nav-overlay.open { display: flex; }
             .workspace { flex-direction: column; }
             .detail-drawer {
                 position: fixed;
@@ -393,6 +408,16 @@
             </button>
         </div>
     </header>
+
+    <!-- Mobile Navigation Menu -->
+    <div class="nav-overlay" id="navOverlay">
+        <a href="index.html" class="topbar-btn">Inicio</a>
+        <a href="visor_genealogia.html" class="topbar-btn">Fichas</a>
+        <a href="arbol_genealogico.html" class="topbar-btn">Árbol gráfico</a>
+        <a href="grafo_relaciones.html" class="topbar-btn">Grafo</a>
+        <a href="mapa_geografico.html" class="topbar-btn">Mapa</a>
+        <a href="estadisticas.html" class="topbar-btn">Estadísticas</a>
+    </div>
 
     <!-- Controls -->
     <div class="controls-bar">
@@ -832,7 +857,7 @@
         }
 
         // Selection & drawer logic
-        function selectNode(name) {
+        function selectNode(name, openDrawer = true) {
             const nodes = document.querySelectorAll(".timeline-node");
             nodes.forEach(n => {
                 n.classList.toggle("active", n.dataset.name === name);
@@ -863,7 +888,9 @@
             avatar.textContent = p.name.charAt(0);
             avatar.style.background = avatarGradient(p.name);
 
-            document.getElementById("detailDrawer").classList.remove("collapsed");
+            if (openDrawer) {
+                document.getElementById("detailDrawer").classList.remove("collapsed");
+            }
         }
 
         function closeDrawer() {
@@ -914,14 +941,15 @@
 
         function setupMobileNav() {
             const toggle = document.getElementById("menuToggle");
-            const nav = document.querySelector(".mobile-nav");
-            toggle.addEventListener("click", () => {
-                nav.style.display = nav.style.display === "flex" ? "none" : "flex";
-            });
+            const nav = document.getElementById("navOverlay");
+            if (toggle && nav) {
+                toggle.addEventListener("click", () => {
+                    nav.classList.toggle("open");
+                });
+            }
         }
 
         window.addEventListener("DOMContentLoaded", () => {
-            // Aplicar tema inmediatamente (sin esperar datos)
             setupTheme();
             setupMobileNav();
 
@@ -929,6 +957,7 @@
             const slider = document.getElementById("zoomSlider");
             slider.addEventListener("input", e => {
                 zoomLevel = parseFloat(e.target.value);
+                syncZoomUI();
                 renderTimeline();
             });
 
@@ -942,7 +971,7 @@
                 });
             });
 
-            // Esperar a GENEALOGIA_DATA con polling (defer puede no haber terminado aún)
+            // Esperar a GENEALOGIA_DATA con polling
             function initWhenReady() {
                 if (typeof GENEALOGIA_DATA !== 'undefined') {
                     buildRelationshipMap();
@@ -955,7 +984,7 @@
                         overlay.style.display = "none";
                         requestAnimationFrame(() => {
                             renderTimeline();
-                            if (people["Adam"]) selectNode("Adam");
+                            if (people["Adam"]) selectNode("Adam", false);
                         });
                     }, 150);
                 } else {
