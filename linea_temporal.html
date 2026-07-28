@@ -416,9 +416,18 @@
     <!-- Workspace -->
     <div class="workspace">
         <!-- Canvas Timeline -->
-        <div class="timeline-container" id="timelineContainer" tabindex="0">
+        <div class="timeline-container" id="timelineContainer" tabindex="0" style="position:relative;">
             <svg class="timeline-svg" id="timelineSvg" width="3000" height="600"></svg>
             <div class="timeline-tooltip" id="timelineTooltip"></div>
+
+            <!-- Floating Scale / Zoom Controls Widget (A mano) -->
+            <div class="floating-zoom-controls" style="position:absolute; bottom:16px; right:16px; z-index:50; display:flex; align-items:center; gap:6px; background:var(--surface); border:2px solid var(--border); padding:6px 10px; box-shadow:var(--shadow-block);">
+                <span style="font-size:10px; font-weight:700; color:var(--subtle); text-transform:uppercase;">Escala:</span>
+                <button class="pill-btn" onclick="adjustZoom(-0.2)" title="Disminuir escala">-</button>
+                <input type="range" class="zoom-slider" id="floatingZoomSlider" min="0.5" max="3" step="0.1" value="1.2" style="width:90px;" oninput="onFloatingZoomInput(this.value)">
+                <button class="pill-btn" onclick="adjustZoom(0.2)" title="Aumentar escala">+</button>
+                <button class="pill-btn" onclick="resetZoom()" title="Restablecer vista 100%" style="font-size:10px; padding:2px 6px;">100%</button>
+            </div>
         </div>
 
         <!-- Detail Drawer -->
@@ -620,30 +629,72 @@
         }
 
         // Interpolate dates
+        // Multi-pass date estimation algorithm so 100% of characters are rendered
         const dateCache = {};
-        function getEstimatedDate(name) {
-            if (dateCache[name] !== undefined) return dateCache[name];
-            if (ESTIMATED_DATES[name] !== undefined) {
-                dateCache[name] = ESTIMATED_DATES[name];
-                return ESTIMATED_DATES[name];
+        function buildDateCache() {
+            Object.keys(ESTIMATED_DATES).forEach(k => { dateCache[k] = ESTIMATED_DATES[k]; });
+
+            // Explicit parent links for key patriarchs if missing in 1 Chron source rows
+            if (people['Efraín'] && !people['Efraín'].father) people['Efraín'].father = 'José';
+            if (people['Manasés'] && !people['Manasés'].father) people['Manasés'].father = 'José';
+            if (people['Sem'] && !people['Sem'].father) people['Sem'].father = 'Noé';
+            if (people['Cam'] && !people['Cam'].father) people['Cam'].father = 'Noé';
+            if (people['Jafet'] && !people['Jafet'].father) people['Jafet'].father = 'Noé';
+            if (people['Caín'] && !people['Caín'].father) people['Caín'].father = 'Adam';
+            if (people['Abel'] && !people['Abel'].father) people['Abel'].father = 'Adam';
+            if (people['Set'] && !people['Set'].father) people['Set'].father = 'Adam';
+
+            // Multi-pass propagation loop
+            let changed = true;
+            let pass = 0;
+            while (changed && pass < 20) {
+                changed = false;
+                pass++;
+                Object.keys(people).forEach(name => {
+                    if (dateCache[name] !== undefined) return;
+                    const p = people[name];
+
+                    // 1. From father
+                    if (p.father && dateCache[p.father] !== undefined) {
+                        dateCache[name] = dateCache[p.father] + 30;
+                        changed = true;
+                        return;
+                    }
+                    // 2. From mother
+                    if (p.mother && dateCache[p.mother] !== undefined) {
+                        dateCache[name] = dateCache[p.mother] + 30;
+                        changed = true;
+                        return;
+                    }
+                    // 3. From children
+                    if (p.children && p.children.length > 0) {
+                        const knownChildDates = p.children.map(c => dateCache[c]).filter(d => d !== undefined);
+                        if (knownChildDates.length > 0) {
+                            const minChild = Math.min(...knownChildDates);
+                            dateCache[name] = minChild - 30;
+                            changed = true;
+                            return;
+                        }
+                    }
+                });
             }
-            const p = people[name];
-            if (!p) return null;
-            if (p.father) {
-                const fDate = getEstimatedDate(p.father);
-                if (fDate !== null) {
-                    const est = fDate + 33; // Average generation gap
-                    dateCache[name] = est;
-                    return est;
+
+            // Fallback pass: estimate by generation or default era date
+            Object.keys(people).forEach(name => {
+                if (dateCache[name] === undefined) {
+                    const gen = getGeneration(name);
+                    if (typeof gen === 'number' && gen !== 99) {
+                        dateCache[name] = -4000 + (gen * 33);
+                    } else {
+                        dateCache[name] = -1400; // Default fallback: mid-biblical era
+                    }
                 }
-            }
-            const gen = getGeneration(name);
-            if (typeof gen === 'number' && gen !== 99) {
-                const est = -4000 + (gen * 33);
-                dateCache[name] = est;
-                return est;
-            }
-            return null;
+            });
+        }
+
+        function getEstimatedDate(name) {
+            if (Object.keys(dateCache).length === 0) buildDateCache();
+            return dateCache[name] !== undefined ? dateCache[name] : -1400;
         }
 
         // Render timeline
@@ -738,6 +789,21 @@
                 node.addEventListener("click", () => selectNode(item.name));
 
                 svg.appendChild(node);
+
+                // Draw text labels for key patriarchs and leaders for instant recognition
+                const keyNames = ["Adam", "Eva", "Set", "Enoc", "Noé", "Sem", "Abraham", "Isaac", "Israel", "Judá", "José", "Moisés", "Aarón", "David", "Salomón", "Ezequías", "Josías", "Zorobabel"];
+                if (keyNames.includes(item.name)) {
+                    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    text.setAttribute("x", x);
+                    text.setAttribute("y", y + 14);
+                    text.setAttribute("text-anchor", "middle");
+                    text.setAttribute("font-size", "10px");
+                    text.setAttribute("font-weight", "700");
+                    text.setAttribute("fill", "var(--text)");
+                    text.setAttribute("pointer-events", "none");
+                    text.textContent = item.name;
+                    svg.appendChild(text);
+                }
             });
         }
 
@@ -807,8 +873,27 @@
 
         function adjustZoom(amount) {
             zoomLevel = Math.max(0.5, Math.min(3, zoomLevel + amount));
+            syncZoomUI();
+            renderTimeline();
+        }
+
+        function onFloatingZoomInput(val) {
+            zoomLevel = parseFloat(val);
             document.getElementById("zoomSlider").value = zoomLevel;
             renderTimeline();
+        }
+
+        function resetZoom() {
+            zoomLevel = 1.2;
+            syncZoomUI();
+            renderTimeline();
+        }
+
+        function syncZoomUI() {
+            const zEl1 = document.getElementById("zoomSlider");
+            const zEl2 = document.getElementById("floatingZoomSlider");
+            if (zEl1) zEl1.value = zoomLevel;
+            if (zEl2) zEl2.value = zoomLevel;
         }
 
         function setupTheme() {
@@ -861,13 +946,17 @@
             function initWhenReady() {
                 if (typeof GENEALOGIA_DATA !== 'undefined') {
                     buildRelationshipMap();
+                    buildDateCache();
 
                     const overlay = document.getElementById("loadingOverlay");
                     overlay.style.opacity = "0";
                     overlay.style.visibility = "hidden";
                     setTimeout(() => {
                         overlay.style.display = "none";
-                        requestAnimationFrame(() => renderTimeline());
+                        requestAnimationFrame(() => {
+                            renderTimeline();
+                            if (people["Adam"]) selectNode("Adam");
+                        });
                     }, 150);
                 } else {
                     setTimeout(initWhenReady, 50);
