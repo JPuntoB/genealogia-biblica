@@ -1616,9 +1616,11 @@
         }
 
         function setupLineageFilter() {
-            document.querySelectorAll(".pill-btn").forEach(btn => {
+            // Scope strictly to buttons that have a data-linaje attribute
+            const lineageBtns = document.querySelectorAll(".pill-btn[data-linaje]");
+            lineageBtns.forEach(btn => {
                 btn.addEventListener("click", () => {
-                    document.querySelectorAll(".pill-btn").forEach(b => b.classList.remove("active"));
+                    lineageBtns.forEach(b => b.classList.remove("active"));
                     btn.classList.add("active");
                     filterLineage = btn.dataset.linaje;
                     setupIndexList();
@@ -2034,7 +2036,7 @@
             document.getElementById("btnEditar").addEventListener("click", toggleEditMode);
             document.getElementById("btnExportPDF").addEventListener("click", exportLineagePDF);
             document.getElementById("btnAddPerson").addEventListener("click", openCreateModal);
-            document.getElementById("btnExportCorrections").addEventListener("click", exportCorrections);
+            document.getElementById("btnExportCorrections").addEventListener("click", exportCorrecciones);
             document.getElementById("btnClearCorrections").addEventListener("click", clearCorrecciones);
 
             setupAutocomplete(document.getElementById('newFatherInput'), document.getElementById('acNewFatherDrop'));
