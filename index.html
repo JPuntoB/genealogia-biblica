@@ -24,6 +24,8 @@
             --subtle:         #8a8880;
             --accent:         #1a1917;
             --accent-bg:      #dedad0;
+            --m-dot:          #3b82f6;
+            --f-dot:          #e879a0;
             --radius-sm:      0px; /* Bordes rectos tipo técnico */
             --radius-md:      4px;
             --radius-lg:      8px;
@@ -41,6 +43,8 @@
             --subtle:         #6a6860;
             --accent:         #faf6f0;
             --accent-bg:      #242321;
+            --m-dot:          #60a5fa;
+            --f-dot:          #f472b6;
             --shadow-block:   4px 4px 0px var(--border);
         }
 
@@ -528,7 +532,7 @@
         Genealogía Bíblica · Crónicas · Documentación Técnica Monocroma
     </footer>
 
-    <script src="genealogia_data.js"></script>
+    <script defer src="genealogia_data.js"></script>
     <script>
         const people = {};
         
@@ -622,17 +626,24 @@
             localStorage.setItem('theme', next); applyTheme(next);
         });
 
-        // Initialize
+        // Initialize with polling loop for defer script
         window.addEventListener("DOMContentLoaded", () => {
-            buildRelationshipMap();
-            setupGlobalSearch();
+            function initWhenReady() {
+                if (typeof GENEALOGIA_DATA !== 'undefined') {
+                    buildRelationshipMap();
+                    setupGlobalSearch();
 
-            // Register Service Worker for PWA
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('Service Worker registrado con éxito:', reg.scope))
-                    .catch(err => console.log('Error al registrar Service Worker:', err));
+                    // Register Service Worker for PWA
+                    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+                        navigator.serviceWorker.register('sw.js')
+                            .then(reg => console.log('Service Worker registrado con éxito:', reg.scope))
+                            .catch(err => console.log('Error al registrar Service Worker:', err));
+                    }
+                } else {
+                    setTimeout(initWhenReady, 50);
+                }
             }
+            initWhenReady();
         });
     </script>
 </body>

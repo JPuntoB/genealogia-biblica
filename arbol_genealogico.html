@@ -87,6 +87,12 @@
             z-index: 9999; flex-direction: column; gap: 16px;
             transition: opacity 0.3s ease, visibility 0.3s ease;
         }
+        #loadingOverlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            display: none !important;
+        }
         .spinner {
             width: 36px; height: 36px;
             border: 2px solid var(--border); border-top-color: var(--border-subtle);
@@ -1049,7 +1055,7 @@
                     if (highlight) setTimeout(() => selectNodeInTree(highlight), 350);
 
                     const overlay = document.getElementById("loadingOverlay");
-                    overlay.style.opacity = "0";
+                    overlay.classList.add("hidden");
                     setTimeout(() => overlay.style.display = "none", 300);
                 } else {
                     setTimeout(initWhenReady, 50);
