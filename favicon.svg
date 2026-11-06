@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Neo-Skeuo parchment badge background -->
+  <rect x="2" y="2" width="60" height="60" rx="8" fill="#faf6f0" stroke="#1a1917" stroke-width="3"/>
+  <rect x="6" y="6" width="52" height="52" rx="5" fill="#f4f0e8" stroke="#7a7870" stroke-width="1" stroke-dasharray="2 2"/>
+  
+  <!-- Tree trunk & branches -->
+  <path d="M32 48 L32 28 M32 38 L20 26 M32 34 L44 24 M20 26 L14 18 M20 26 L26 18 M44 24 L38 16 M44 24 L50 16" 
+        stroke="#1a1917" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Root node -->
+  <circle cx="32" cy="48" r="4.5" fill="#1a1917"/>
+  
+  <!-- Intermediate nodes -->
+  <circle cx="32" cy="28" r="3.5" fill="#1a1917"/>
+  <circle cx="20" cy="26" r="3" fill="#3b82f6" stroke="#1a1917" stroke-width="1.5"/>
+  <circle cx="44" cy="24" r="3" fill="#e879a0" stroke="#1a1917" stroke-width="1.5"/>
+  
+  <!-- Leaf / generation nodes -->
+  <circle cx="14" cy="18" r="2.5" fill="#3b82f6"/>
+  <circle cx="26" cy="18" r="2.5" fill="#e879a0"/>
+  <circle cx="38" cy="16" r="2.5" fill="#3b82f6"/>
+  <circle cx="50" cy="16" r="2.5" fill="#e879a0"/>
+</svg>

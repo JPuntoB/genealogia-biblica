@@ -8,6 +8,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#faf6f0">
     
     <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -576,8 +579,22 @@
             "Persia": [32.0, 53.0]
         };
 
+        function getCorreccionesData() {
+            return JSON.parse(localStorage.getItem("correcciones_genealogia") || localStorage.getItem("genealogia_correcciones_v1") || '{"modificaciones":{},"nuevos":[]}');
+        }
+
         function buildRelationshipMap() {
             if (typeof GENEALOGIA_DATA === 'undefined') return;
+
+            const stored = getCorreccionesData();
+            if (stored.nuevos && stored.nuevos.length > 0) {
+                stored.nuevos.forEach(newP => {
+                    const idx = GENEALOGIA_DATA.findIndex(r => r["Hijos"] === newP["Hijos"] && r["Referencia"] === newP["Referencia"]);
+                    if (idx !== -1) GENEALOGIA_DATA.splice(idx, 1);
+                });
+                GENEALOGIA_DATA.push(...stored.nuevos);
+            }
+
             function getOrCreate(name) {
                 if (!name) return null;
                 const n = name.trim(); if (!n) return null;
@@ -609,6 +626,21 @@
                 if (mother && childName) mother.children.push({ name:childName, gender:row["Género Hijos"]||"M", birthPlace:row["Lugar de nacimiento"]||"" });
                 if (fatherName && row["Significado del Nombre (Padre)"]) father.meaning = row["Significado del Nombre (Padre)"];
             });
+
+            if (stored.modificaciones) {
+                Object.keys(stored.modificaciones).forEach(name => {
+                    const p = getOrCreate(name);
+                    if (p) {
+                        const mods = stored.modificaciones[name];
+                        if (mods.meaning !== undefined) p.meaning = mods.meaning;
+                        if (mods.birthPlace !== undefined) p.birthPlace = mods.birthPlace;
+                        if (mods.notes !== undefined) p.notes = mods.notes;
+                        if (mods.gender !== undefined) p.gender = mods.gender;
+                        if (mods.father !== undefined) p.father = mods.father;
+                        if (mods.mother !== undefined) p.mother = mods.mother;
+                    }
+                });
+            }
         }
 
         function findCoords(place) {
@@ -829,6 +861,13 @@
                     const overlay = document.getElementById("loadingOverlay");
                     overlay.classList.add("hidden");
                     setTimeout(() => overlay.style.display = "none", 300);
+
+                    // Register Service Worker for PWA
+                    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+                        navigator.serviceWorker.register('sw.js')
+                            .then(reg => console.log('Service Worker registrado con éxito:', reg.scope))
+                            .catch(err => console.log('Error al registrar Service Worker:', err));
+                    }
                 } else {
                     setTimeout(initWhenReady, 50);
                 }

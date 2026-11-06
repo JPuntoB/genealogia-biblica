@@ -1,4 +1,4 @@
-const CACHE_NAME = 'genealogia-biblica-v3';
+const CACHE_NAME = 'genealogia-biblica-v4';
 const ASSETS = [
     './',
     './index.html',
@@ -10,6 +10,7 @@ const ASSETS = [
     './estadisticas.html',
     './genealogia_data.js',
     './manifest.json',
+    './favicon.svg',
     './adam_portrait.png'
 ];
 
@@ -48,7 +49,7 @@ self.addEventListener('fetch', e => {
             }
             return fetch(e.request).then(networkResponse => {
                 // Dynamically cache external fonts/scripts if fetched
-                if (e.request.url.includes('fonts.googleapis.com') || e.request.url.includes('fonts.gstatic.com') || e.request.url.includes('cdnjs.cloudflare.com') || e.request.url.includes('unpkg.com') || e.request.url.includes('cdn.jsdelivr.net')) {
+                if (e.request.url.includes('fonts.googleapis.com') || e.request.url.includes('fonts.gstatic.com') || e.request.url.includes('cdnjs.cloudflare.com') || e.request.url.includes('unpkg.com') || e.request.url.includes('cdn.jsdelivr.net') || e.request.url.includes('d3js.org')) {
                     return caches.open(CACHE_NAME).then(cache => {
                         cache.put(e.request, networkResponse.clone());
                         return networkResponse;

@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#faf6f0">
     <style>
@@ -374,7 +375,7 @@
         </div>
         <div class="hero-stats">
             <div class="hero-stat">
-                <span class="hero-stat-val">3600+</span>
+                <span class="hero-stat-val" id="heroStatCharacters">690+</span>
                 <span class="hero-stat-label">Personajes</span>
             </div>
             <div class="hero-stat">
@@ -382,8 +383,8 @@
                 <span class="hero-stat-label">Capítulos</span>
             </div>
             <div class="hero-stat">
-                <span class="hero-stat-val">04</span>
-                <span class="hero-stat-label">Esquemas</span>
+                <span class="hero-stat-val">06</span>
+                <span class="hero-stat-label">Vistas</span>
             </div>
         </div>
     </section>
@@ -555,7 +556,37 @@
                 if (name && !people[name]) {
                     people[name] = { name, gender: row["Género Hijos"] || "M" };
                 }
+                const fn = row["Padre"];
+                if (fn && !people[fn]) {
+                    people[fn] = { name: fn, gender: "M" };
+                }
+                const mn = row["Madre"];
+                if (mn && !people[mn]) {
+                    people[mn] = { name: mn, gender: "F" };
+                }
             });
+
+            // Patriarchs guarantee
+            ["Adam", "Eva", "Set", "Noé", "Abraham", "Israel", "David", "Salomón"].forEach(name => {
+                if (!people[name]) {
+                    people[name] = { name, gender: (name === "Eva" ? "F" : "M") };
+                }
+            });
+
+            // Apply modifications
+            if (stored.modificaciones) {
+                Object.keys(stored.modificaciones).forEach(name => {
+                    if (people[name] && stored.modificaciones[name].gender) {
+                        people[name].gender = stored.modificaciones[name].gender;
+                    }
+                });
+            }
+
+            const total = Object.keys(people).length;
+            const statElem = document.getElementById("heroStatCharacters");
+            if (statElem && total > 0) {
+                statElem.textContent = total + "+";
+            }
         }
 
         function normText(s) {
@@ -593,11 +624,12 @@
                             <div style="width: 7px; height: 7px; border-radius: 50%; background: ${color}; border: 1.5px solid var(--border); flex-shrink:0;"></div>
                             <span style="font-weight: 700; font-size: 12.5px; color: var(--text);">${name}</span>
                         </div>
-                        <div style="display: flex; gap: 4px;">
+                        <div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end;">
                             <a href="visor_genealogia.html?name=${encodeURIComponent(name)}" class="topbar-btn" style="padding: 2px 6px; font-size: 10px; box-shadow: 1px 1px 0px var(--border); text-decoration: none;">Ficha</a>
                             <a href="arbol_genealogico.html?highlight=${encodeURIComponent(name)}" class="topbar-btn" style="padding: 2px 6px; font-size: 10px; box-shadow: 1px 1px 0px var(--border); text-decoration: none;">Árbol</a>
                             <a href="grafo_relaciones.html?name=${encodeURIComponent(name)}" class="topbar-btn" style="padding: 2px 6px; font-size: 10px; box-shadow: 1px 1px 0px var(--border); text-decoration: none;">Grafo</a>
                             <a href="mapa_geografico.html?name=${encodeURIComponent(name)}" class="topbar-btn" style="padding: 2px 6px; font-size: 10px; box-shadow: 1px 1px 0px var(--border); text-decoration: none;">Mapa</a>
+                            <a href="linea_temporal.html?name=${encodeURIComponent(name)}" class="topbar-btn" style="padding: 2px 6px; font-size: 10px; box-shadow: 1px 1px 0px var(--border); text-decoration: none;">Línea</a>
                         </div>
                     `;
                     resultsDiv.appendChild(row);
@@ -634,7 +666,7 @@
                     setupGlobalSearch();
 
                     // Register Service Worker for PWA
-                    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+                    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
                         navigator.serviceWorker.register('sw.js')
                             .then(reg => console.log('Service Worker registrado con éxito:', reg.scope))
                             .catch(err => console.log('Error al registrar Service Worker:', err));
