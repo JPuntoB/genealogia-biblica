@@ -362,7 +362,7 @@
         </h1>
         <p class="hero-sub">
             Exploración técnica y estructurada desde Adán hasta el exilio de Babilonia.
-            Visualización avanzada a través de cuatro esquemas de datos interactivos.
+            Visualización avanzada a través de siete esquemas de datos interactivos.
         </p>
 
         <!-- Global Search Bar -->
@@ -383,7 +383,7 @@
                 <span class="hero-stat-label">Capítulos</span>
             </div>
             <div class="hero-stat">
-                <span class="hero-stat-val">06</span>
+                <span class="hero-stat-val">07</span>
                 <span class="hero-stat-label">Vistas</span>
             </div>
         </div>
@@ -525,6 +525,28 @@
                 </div>
             </a>
 
+            <!-- Carta de Adams -->
+            <a href="carta_adams.html" class="nav-card" id="card-adams">
+                <div class="card-header-line"></div>
+                <div class="card-icon">
+                    <svg viewBox="0 0 24 24"><path d="M3 5v14h18V5H3zm2 2h4v10H5V7zm6 0h4v10h-4V7zm6 0h2v10h-2V7z"/></svg>
+                </div>
+                <div class="card-content">
+                    <div class="card-title">07. Carta de Adams</div>
+                    <div class="card-desc">
+                        Mapa sincronológico panorámico con ríos de linaje paralelos, barras de longevidad, escáner de contemporáneos y modo presentación guiada.
+                    </div>
+                    <div class="card-tags">
+                        <span class="card-tag">Presentación</span>
+                        <span class="card-tag">Longevidad</span>
+                        <span class="card-tag">Sincronología</span>
+                    </div>
+                </div>
+                <div class="card-arrow">
+                    <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+                </div>
+            </a>
+
         </div>
     </section>
 
@@ -538,7 +560,7 @@
         const people = {};
         
         function getCorreccionesData() {
-            return JSON.parse(localStorage.getItem("correcciones_genealogia") || '{"modificaciones":{},"nuevos":[]}');
+            return JSON.parse(localStorage.getItem("correcciones_genealogia") || localStorage.getItem("genealogia_correcciones_v1") || '{"modificaciones":{},"nuevos":[]}');
         }
 
         function buildRelationshipMap() {
@@ -630,6 +652,7 @@
                             <a href="grafo_relaciones.html?name=${encodeURIComponent(name)}" class="topbar-btn" style="padding: 2px 6px; font-size: 10px; box-shadow: 1px 1px 0px var(--border); text-decoration: none;">Grafo</a>
                             <a href="mapa_geografico.html?name=${encodeURIComponent(name)}" class="topbar-btn" style="padding: 2px 6px; font-size: 10px; box-shadow: 1px 1px 0px var(--border); text-decoration: none;">Mapa</a>
                             <a href="linea_temporal.html?name=${encodeURIComponent(name)}" class="topbar-btn" style="padding: 2px 6px; font-size: 10px; box-shadow: 1px 1px 0px var(--border); text-decoration: none;">Línea</a>
+                            <a href="carta_adams.html?name=${encodeURIComponent(name)}" class="topbar-btn" style="padding: 2px 6px; font-size: 10px; box-shadow: 1px 1px 0px var(--border); text-decoration: none;">Adams</a>
                         </div>
                     `;
                     resultsDiv.appendChild(row);

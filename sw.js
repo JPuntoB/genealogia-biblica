@@ -1,4 +1,4 @@
-const CACHE_NAME = 'genealogia-biblica-v4';
+const CACHE_NAME = 'genealogia-biblica-v5';
 const ASSETS = [
     './',
     './index.html',
@@ -7,6 +7,7 @@ const ASSETS = [
     './grafo_relaciones.html',
     './mapa_geografico.html',
     './linea_temporal.html',
+    './carta_adams.html',
     './estadisticas.html',
     './genealogia_data.js',
     './manifest.json',

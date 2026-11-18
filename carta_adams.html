@@ -1,0 +1,2035 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genealogía Bíblica · Carta de Adams (Mapa Sincronológico)</title>
+    <meta name="description" content="Carta sincronológica interactiva estilo Adams Chart: ríos paralelos de linajes, barras de longevidad, escáner de contemporáneos y modo presentación guiada.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#faf6f0">
+    <style>
+        /* ── Neo-Skeuo Design tokens ──────────────────────────── */
+        :root {
+            --bg:             #faf6f0;
+            --surface:        #f4f0e8;
+            --surface-raised: #f7f6f2;
+            --surface-inset:  #dedad0;
+            --border:         #1a1917;
+            --border-subtle:  #7a7870;
+            --text:           #1a1917;
+            --muted:          #5a5850;
+            --subtle:         #8a8880;
+            --accent:         #1a1917;
+            --accent-bg:      #dedad0;
+            --m-dot:          #3b82f6;
+            --f-dot:          #e879a0;
+            --radius-sm:      0px;
+            --radius-md:      4px;
+            --shadow-block:   3px 3px 0px var(--border);
+        }
+        [data-theme="dark"] {
+            --bg:             #403d39;
+            --surface:        #32302d;
+            --surface-raised: #47423b;
+            --surface-inset:  #242321;
+            --border:         #faf6f0;
+            --border-subtle:  #8a8880;
+            --text:           #faf6f0;
+            --muted:          #b0ada6;
+            --subtle:         #6a6860;
+            --accent:         #faf6f0;
+            --accent-bg:      #242321;
+            --m-dot:          #60a5fa;
+            --f-dot:          #f472b6;
+            --shadow-block:   3px 3px 0px var(--border);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .dotted-grid {
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(var(--border-subtle) 1px, transparent 1px);
+            background-size: 20px 20px;
+            opacity: 0.08;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Loading Overlay */
+        #loadingOverlay {
+            position: fixed; inset: 0; background: var(--bg);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999; flex-direction: column; gap: 16px;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        #loadingOverlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; display: none !important; }
+        .spinner {
+            width: 36px; height: 36px;
+            border: 2px solid var(--border); border-top-color: var(--border-subtle);
+            animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Topbar ── */
+        .topbar {
+            height: 52px;
+            min-height: 52px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 16px;
+            background: var(--surface);
+            border-bottom: 2px solid var(--border);
+            flex-shrink: 0;
+            z-index: 50;
+        }
+        .topbar-brand {
+            font-size: 13px; font-weight: 700; color: var(--text);
+            display: flex; align-items: center; gap: 8px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            flex-shrink: 0;
+        }
+        .topbar-brand-dot { width: 8px; height: 8px; background: var(--text); border-radius: 50%; flex-shrink: 0; }
+        .topbar-mono-label {
+            font-size: 10.5px; color: var(--subtle); font-family: monospace;
+            text-transform: uppercase; white-space: nowrap; flex-shrink: 0;
+        }
+        .topbar-sep { flex: 1; }
+        .topbar-nav-links { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .topbar-btn {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 5px 10px; font-size: 11.5px; font-weight: 600;
+            color: var(--text); background: var(--surface-raised);
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+            cursor: pointer; text-decoration: none; font-family: inherit;
+            box-shadow: 2px 2px 0px var(--border);
+            transition: transform 0.1s, box-shadow 0.1s;
+            white-space: nowrap;
+        }
+        .topbar-btn:active { transform: translate(2px, 2px); box-shadow: none; }
+        .topbar-btn.primary {
+            background: var(--border);
+            color: var(--bg);
+        }
+        .topbar-btn svg { width: 13px; height: 13px; fill: currentColor; }
+
+        /* Mobile Menu */
+        .menu-toggle {
+            display: none; background: var(--surface-raised); border: 1px solid var(--border);
+            padding: 5px 8px; cursor: pointer; box-shadow: 2px 2px 0px var(--border);
+        }
+        .menu-toggle svg { width: 16px; height: 16px; fill: var(--text); display: block; }
+        .nav-overlay {
+            display: none; position: fixed; top: 52px; left: 0; right: 0;
+            background: var(--surface); border-bottom: 2px solid var(--border);
+            padding: 12px 16px; flex-direction: column; gap: 8px; z-index: 45;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        /* ── Controls Bar ── */
+        .controls-bar {
+            min-height: 48px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 6px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            z-index: 40;
+            flex-shrink: 0;
+        }
+        .pill-group {
+            display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+        }
+        .pill-btn {
+            padding: 4px 10px; font-size: 11px; font-weight: 600;
+            background: var(--surface-raised); border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text); cursor: pointer; font-family: inherit;
+            box-shadow: 1px 1px 0px var(--border);
+            transition: all 0.1s; white-space: nowrap;
+            display: inline-flex; align-items: center; gap: 4px;
+        }
+        .pill-btn:active { transform: translate(1px, 1px); box-shadow: none; }
+        .pill-btn.active {
+            background: var(--surface-inset);
+            box-shadow: none;
+            transform: translate(1px, 1px);
+        }
+
+        .search-inline {
+            position: relative;
+            width: 190px;
+        }
+        .search-inline input {
+            width: 100%;
+            padding: 4px 8px 4px 24px;
+            font-size: 11px;
+            font-family: inherit;
+            background: var(--surface-inset);
+            color: var(--text);
+            border: 1px solid var(--border);
+            outline: none;
+        }
+        .search-inline svg {
+            position: absolute; left: 7px; top: 50%; transform: translateY(-50%);
+            width: 12px; height: 12px; fill: var(--subtle); pointer-events: none;
+        }
+        .search-drop {
+            position: absolute; top: 100%; left: 0; right: 0;
+            background: var(--surface); border: 2px solid var(--border);
+            box-shadow: var(--shadow-block); z-index: 120;
+            max-height: 220px; overflow-y: auto; display: none;
+        }
+        .search-drop-item {
+            padding: 6px 8px; font-size: 11px; cursor: pointer;
+            border-bottom: 1px dashed var(--border-subtle);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .search-drop-item:hover { background: var(--surface-inset); }
+
+        .zoom-wrap {
+            display: flex; align-items: center; gap: 6px; margin-left: auto;
+            font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+        }
+        .zoom-slider { width: 84px; accent-color: var(--border); cursor: pointer; }
+
+        /* ── Workspace ── */
+        .workspace {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+            z-index: 5;
+        }
+
+        .chart-stage {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Sticky Left Stream Legend + Scrollable Chart */
+        .chart-scroll-wrap {
+            flex: 1;
+            overflow: auto;
+            cursor: grab;
+            position: relative;
+            user-select: none;
+            background: var(--bg);
+        }
+        .chart-scroll-wrap.grabbing { cursor: grabbing; }
+
+        .chart-canvas-inner {
+            position: relative;
+            display: inline-block;
+            min-height: 100%;
+        }
+
+        svg.adams-svg {
+            display: block;
+        }
+
+        /* SVG Typography & Interactive Elements */
+        .adams-title-tech {
+            font-family: 'Inter', system-ui, sans-serif;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            fill: var(--text);
+        }
+        .adams-mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+        .lifespan-group {
+            cursor: pointer;
+            transition: opacity 0.15s ease;
+        }
+        .lifespan-group:hover .lifespan-rect {
+            stroke-width: 2.2px;
+            fill: var(--surface-inset);
+        }
+        .lifespan-group.selected .lifespan-rect {
+            stroke: var(--border);
+            stroke-width: 3px;
+            fill: var(--surface-inset);
+        }
+        .lifespan-group.dimmed {
+            opacity: 0.25;
+        }
+        .lifespan-group.featured .lifespan-rect {
+            stroke: var(--border);
+            stroke-width: 2.6px;
+            fill: var(--surface-inset);
+        }
+
+        /* ── Bottom Contemporaries Scanner Strip + Minimap ── */
+        .scanner-strip {
+            background: var(--surface);
+            border-top: 2px solid var(--border);
+            padding: 8px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            z-index: 30;
+            flex-shrink: 0;
+        }
+        .scanner-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .scanner-year-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 3px 10px;
+            background: var(--surface-inset);
+            color: var(--text);
+            border: 1px solid var(--border);
+            font-family: monospace; font-size: 11px; font-weight: 700;
+            text-transform: uppercase;
+        }
+        .scanner-list {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 2px;
+            scrollbar-width: thin;
+        }
+        .contemp-chip {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 3px 8px; font-size: 11px; font-weight: 600;
+            background: var(--surface-raised); border: 1px solid var(--border);
+            color: var(--text); cursor: pointer; white-space: nowrap;
+            box-shadow: 1.5px 1.5px 0px var(--border);
+        }
+        .contemp-chip:hover { background: var(--surface-inset); }
+        .contemp-age {
+            font-family: monospace; font-size: 10px; color: var(--muted);
+        }
+
+        /* Panoramic Minimap Bar */
+        .minimap-bar {
+            height: 28px;
+            background: var(--surface-inset);
+            border: 1.5px solid var(--border);
+            position: relative;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        .minimap-eras {
+            display: flex;
+            height: 100%;
+            width: 100%;
+            pointer-events: none;
+        }
+        .minimap-era-seg {
+            border-right: 1px dashed var(--border-subtle);
+            font-size: 8.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            white-space: nowrap;
+            padding: 0 4px;
+        }
+        .minimap-viewport {
+            position: absolute;
+            top: 0; bottom: 0;
+            background: rgba(122, 120, 112, 0.22);
+            border: 2px solid var(--border);
+            pointer-events: none;
+        }
+
+        /* ── Presentation Tour Overlay Card ── */
+        .presentation-panel {
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(680px, 94vw);
+            background: var(--surface);
+            border: 2px solid var(--border);
+            box-shadow: 4px 4px 0px var(--border);
+            padding: 16px 20px;
+            z-index: 80;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .presentation-panel.active { display: flex; }
+        .pres-top {
+            display: flex; justify-content: space-between; align-items: center; gap: 8px;
+            border-bottom: 1px dashed var(--border-subtle); padding-bottom: 8px;
+        }
+        .pres-kicker {
+            font-family: monospace; font-size: 10.5px; font-weight: 700;
+            text-transform: uppercase; color: var(--muted); letter-spacing: 0.6px;
+        }
+        .pres-title {
+            font-size: 17px; font-weight: 800; color: var(--text); line-height: 1.25;
+            text-transform: uppercase;
+            border-bottom: 3px double var(--border);
+            padding-bottom: 4px;
+        }
+        .pres-body {
+            font-size: 12.5px; color: var(--muted); line-height: 1.6;
+        }
+        .pres-fact {
+            background: var(--surface-raised);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--border);
+            padding: 7px 10px;
+            font-size: 11.5px;
+            color: var(--text);
+            font-weight: 500;
+        }
+        .pres-controls {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 8px; flex-wrap: wrap; padding-top: 6px;
+            border-top: 1px dashed var(--border-subtle);
+        }
+        .pres-dots {
+            display: flex; gap: 5px; align-items: center;
+        }
+        .pres-dot {
+            width: 9px; height: 9px; border: 1.5px solid var(--border);
+            background: var(--surface-inset); cursor: pointer;
+        }
+        .pres-dot.active { background: var(--border); transform: scale(1.15); }
+        .pres-progress-track {
+            height: 3px; background: var(--surface-inset); width: 100%; overflow: hidden;
+        }
+        .pres-progress-fill {
+            height: 100%; background: var(--border); width: 0%; transition: width 0.2s linear;
+        }
+
+        /* ── Detail Drawer ── */
+        .detail-drawer {
+            width: 320px;
+            background: var(--surface);
+            border-left: 2px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            transition: width 0.2s, transform 0.2s;
+            z-index: 35;
+            flex-shrink: 0;
+        }
+        .detail-drawer.collapsed { width: 0; border-left: none; overflow: hidden; }
+        .drawer-header {
+            padding: 14px 16px; border-bottom: 2px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+            background: var(--surface-raised);
+        }
+        .drawer-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+        .avatar-block {
+            width: 72px; height: 72px; border: 2px solid var(--border);
+            box-shadow: 2px 2px 0px var(--border);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 28px; font-weight: 800; color: #fff; align-self: center;
+        }
+        .meta-card {
+            background: var(--surface-raised); border: 1px solid var(--border);
+            box-shadow: 2px 2px 0px var(--border);
+            overflow: hidden; font-size: 12px;
+        }
+        .meta-row {
+            display: flex; justify-content: space-between; gap: 8px;
+            padding: 6px 10px;
+            border-bottom: 1px dashed var(--border-subtle);
+        }
+        .meta-row:last-child { border-bottom: none; }
+        .meta-key { color: var(--subtle); font-weight: 700; font-size: 9.5px; text-transform: uppercase; }
+        .meta-val { color: var(--text); font-weight: 600; text-align: right; }
+
+        /* Tooltip */
+        .adams-tooltip {
+            position: fixed;
+            background: var(--surface);
+            border: 2px solid var(--border);
+            padding: 8px 12px;
+            box-shadow: 3px 3px 0px var(--border);
+            pointer-events: none;
+            z-index: 200;
+            font-size: 11.5px;
+            opacity: 0;
+            transition: opacity 0.12s;
+            max-width: 260px;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .topbar-mono-label { display: none; }
+            .topbar { gap: 6px; padding: 0 12px; }
+        }
+        @media (max-width: 768px) {
+            .topbar-nav-only { display: none !important; }
+            .topbar-brand-text { display: none; }
+            .theme-label { display: none; }
+            .menu-toggle { display: block; }
+            .nav-overlay.open { display: flex; }
+            .zoom-wrap { margin-left: 0; }
+            .search-inline { width: 150px; }
+            .detail-drawer {
+                position: fixed;
+                right: 0; top: 52px; bottom: 0;
+                width: 100%; max-width: 380px;
+                z-index: 100;
+                box-shadow: -4px 0 16px rgba(0,0,0,0.25);
+            }
+            .detail-drawer.collapsed { width: 0; }
+            .presentation-panel { top: 8px; padding: 12px 14px; }
+            .pres-title { font-size: 17px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dotted-grid"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <span style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;">[Desplegando Carta Sincronológica de Adams]</span>
+    </div>
+
+    <!-- Topbar -->
+    <header class="topbar">
+        <button class="menu-toggle" id="menuToggle" aria-label="Menú">
+            <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        </button>
+        <div class="topbar-brand">
+            <div class="topbar-brand-dot"></div>
+            <span class="topbar-brand-text">Genealogía Bíblica</span>
+        </div>
+        <span class="topbar-mono-label">[Carta de Adams]</span>
+
+        <div class="topbar-sep"></div>
+
+        <div class="topbar-nav-links">
+            <a href="index.html" class="topbar-btn topbar-nav-only">Inicio</a>
+            <a href="visor_genealogia.html" class="topbar-btn topbar-nav-only">Fichas</a>
+            <a href="arbol_genealogico.html" class="topbar-btn topbar-nav-only">Árbol gráfico</a>
+            <a href="grafo_relaciones.html" class="topbar-btn topbar-nav-only">Grafo</a>
+            <a href="mapa_geografico.html" class="topbar-btn topbar-nav-only">Mapa</a>
+            <a href="linea_temporal.html" class="topbar-btn topbar-nav-only">Línea Temporal</a>
+            <a href="estadisticas.html" class="topbar-btn topbar-nav-only">Estadísticas</a>
+            <button class="topbar-btn" id="themeToggle" aria-label="Cambiar tema">
+                <svg id="sunIcon" style="display:none" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3zm0-11c-.55 0-1-.45-1-1V2c0-.55.45-1 1-1s1 .45 1 1v1c0 .55-.45 1-1 1zm0 16c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1s1-.45 1-1v-1c0-.55-.45-1-1-1zm8-8c0-.55-.45-1-1-1h-1c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zM6 12c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1s.45 1 1 1h1c.55 0 1-.45 1-1zm11.66-5.66l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zm-11.31 11.3l-.71.71c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0l.71-.71c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0zm11.31.01l-.71.71c-.39-.39-1.02-.39-1.41 0l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zM6.35 6.34l-.71-.71c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l.71.71c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41z"/></svg>
+                <svg id="moonIcon" viewBox="0 0 24 24"><path d="M12.3 22h-.1c-5.5 0-10-4.5-10-10 0-4.8 3.5-8.9 8.3-9.7.6-.1 1.1.4 1 1-.4 2.4.4 4.9 2.1 6.6 1.7 1.7 4.2 2.5 6.6 2.1.6-.1 1.1.4 1 1-.8 4.8-4.9 8.3-9.7 8.3z"/></svg>
+                <span class="theme-label">Tema</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Mobile Navigation Overlay -->
+    <div class="nav-overlay" id="navOverlay">
+        <a href="index.html" class="topbar-btn">Inicio</a>
+        <a href="visor_genealogia.html" class="topbar-btn">Fichas</a>
+        <a href="arbol_genealogico.html" class="topbar-btn">Árbol gráfico</a>
+        <a href="grafo_relaciones.html" class="topbar-btn">Grafo</a>
+        <a href="mapa_geografico.html" class="topbar-btn">Mapa</a>
+        <a href="linea_temporal.html" class="topbar-btn">Línea Temporal</a>
+        <a href="estadisticas.html" class="topbar-btn">Estadísticas</a>
+    </div>
+
+    <!-- Controls Bar -->
+    <div class="controls-bar">
+        <button class="pill-btn" id="btnStartPresentation" title="Recorrido guiado interactivo por las eras de la Carta de Adams">
+            ▶ Modo Presentación
+        </button>
+
+        <div class="pill-group" id="detailModeGroup">
+            <button class="pill-btn active" data-mode="key">Vista Clásica (Patriarcas y Reyes)</button>
+            <button class="pill-btn" data-mode="all">Dataset Completo (690+)</button>
+        </div>
+
+        <button class="pill-btn active" id="btnToggleBranches" title="Mostrar u ocultar líneas de bifurcación entre padres e hijos">
+            Ramas: ON
+        </button>
+
+        <div class="search-inline">
+            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input type="text" id="chartSearchInput" placeholder="Ir a personaje..." autocomplete="off">
+            <div class="search-drop" id="chartSearchDrop"></div>
+        </div>
+
+        <button class="pill-btn" id="btnExportPNG" title="Descargar imagen PNG de la Carta de Adams">Exportar PNG</button>
+
+        <div class="zoom-wrap">
+            <span>Escala</span>
+            <button class="pill-btn" onclick="adjustZoom(-0.2)">-</button>
+            <input type="range" class="zoom-slider" id="zoomSlider" min="0.45" max="2.4" step="0.05" value="1">
+            <button class="pill-btn" onclick="adjustZoom(0.2)">+</button>
+        </div>
+    </div>
+
+    <!-- Workspace -->
+    <div class="workspace">
+        <div class="chart-stage">
+            <!-- Guided Presentation Floating Card -->
+            <div class="presentation-panel" id="presentationPanel" role="dialog" aria-label="Presentación guiada de la Carta de Adams">
+                <div class="pres-top">
+                    <span class="pres-kicker" id="presKicker">CAPÍTULO 1 DE 8 · 4004 a.C.</span>
+                    <div style="display:flex; gap:6px; align-items:center;">
+                        <button class="pill-btn" id="btnFullscreen" title="Pantalla completa">⛶</button>
+                        <button class="pill-btn" id="btnClosePresentation">✕ Salir</button>
+                    </div>
+                </div>
+                <h2 class="pres-title" id="presTitle">El Pergamino Sincronológico de Adams</h2>
+                <p class="pres-body" id="presBody"></p>
+                <div class="pres-fact" id="presFact"></div>
+                <div class="pres-progress-track"><div class="pres-progress-fill" id="presProgressFill"></div></div>
+                <div class="pres-controls">
+                    <div style="display:flex; gap:6px;">
+                        <button class="pill-btn" id="btnPresPrev">← Anterior</button>
+                        <button class="pill-btn active" id="btnPresPlay">⏸ Pausar Auto</button>
+                        <button class="pill-btn" id="btnPresNext">Siguiente →</button>
+                    </div>
+                    <div class="pres-dots" id="presDots"></div>
+                </div>
+            </div>
+
+            <!-- Scrollable Chart Viewport -->
+            <div class="chart-scroll-wrap" id="chartScrollWrap">
+                <div class="chart-canvas-inner" id="chartCanvasInner">
+                    <svg class="adams-svg" id="adamsSvg"></svg>
+                </div>
+            </div>
+
+            <!-- Contemporaries Scanner & Panoramic Minimap -->
+            <div class="scanner-strip">
+                <div class="scanner-header">
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <span class="scanner-year-badge" id="scannerYearBadge">Escáner: 2000 a.C. · 2004 AM</span>
+                        <span style="font-size:11px; color:var(--muted); font-weight:600;" id="scannerPrompt">
+                            Haz clic o mueve el escáner sobre la carta para ver quiénes vivían al mismo tiempo:
+                        </span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <label style="font-size:10.5px; font-weight:700; color:var(--subtle); text-transform:uppercase; display:flex; align-items:center; gap:4px; cursor:pointer;">
+                            <input type="checkbox" id="chkFollowMouse" checked> Seguir puntero
+                        </label>
+                    </div>
+                </div>
+                <div class="scanner-list" id="scannerList"></div>
+                <div class="minimap-bar" id="minimapBar" title="Haz clic o arrastra en el minimapa para desplazarte por los 3.600 años">
+                    <div class="minimap-eras" id="minimapEras"></div>
+                    <div class="minimap-viewport" id="minimapViewport"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detail Drawer -->
+        <aside class="detail-drawer collapsed" id="detailDrawer">
+            <div class="drawer-header">
+                <span style="font-weight:700; text-transform:uppercase; font-size:11px;">Ficha Sincronológica</span>
+                <button class="topbar-btn" onclick="closeDrawer()" style="padding:2px 8px; font-size:11px;">Cerrar</button>
+            </div>
+            <div class="drawer-body">
+                <div class="avatar-block" id="drawAvatar">?</div>
+                <div style="text-align:center;">
+                    <h3 id="drawName" style="font-size:19px; font-weight:800; text-transform:uppercase;"></h3>
+                    <p id="drawMeaning" style="font-size:11.5px; font-style:italic; color:var(--muted); margin-top:2px;"></p>
+                </div>
+
+                <div class="meta-card">
+                    <div class="meta-row"><span class="meta-key">Corriente</span><span class="meta-val" id="drawStream">—</span></div>
+                    <div class="meta-row"><span class="meta-key">Nacimiento</span><span class="meta-val" id="drawBirthYear">—</span></div>
+                    <div class="meta-row"><span class="meta-key">Fallecimiento</span><span class="meta-val" id="drawDeathYear">—</span></div>
+                    <div class="meta-row"><span class="meta-key">Longevidad</span><span class="meta-val" id="drawAge">—</span></div>
+                    <div class="meta-row"><span class="meta-key">Generación</span><span class="meta-val" id="drawGen">—</span></div>
+                    <div class="meta-row"><span class="meta-key">Padre / Madre</span><span class="meta-val" id="drawParents">—</span></div>
+                    <div class="meta-row"><span class="meta-key">Origen</span><span class="meta-val" id="drawPlace">—</span></div>
+                </div>
+
+                <div style="border-top:1px dashed var(--border-subtle); padding-top:10px;">
+                    <span style="font-size:10px; font-weight:700; color:var(--subtle); text-transform:uppercase; display:block; margin-bottom:5px;">Reseña y Referencia</span>
+                    <p id="drawNotes" style="font-size:12px; color:var(--muted); line-height:1.55;"></p>
+                    <p id="drawRef" style="font-size:11px; color:var(--subtle); margin-top:6px; font-family:monospace;"></p>
+                </div>
+
+                <div style="display:flex; gap:6px; margin-top:6px;">
+                    <a id="drawLinkFicha" href="#" class="topbar-btn" style="flex:1; justify-content:center;">Ver Ficha →</a>
+                    <a id="drawLinkTree" href="#" class="topbar-btn" style="flex:1; justify-content:center;">Ver Árbol →</a>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <div class="adams-tooltip" id="adamsTooltip"></div>
+
+    <script defer src="genealogia_data.js"></script>
+    <script>
+        /* ── Global State & Chronology Constants ─────────────── */
+        const people = {};
+        let detailMode = "key"; // "key" | "all"
+        let showBranches = true;
+        let zoomLevel = 1.0;
+        let scannerYear = -2000;
+        let selectedPersonName = null;
+        let presentationFeatured = new Set();
+
+        const MIN_YEAR = -4050;
+        const MAX_YEAR = -420;
+        const CREATION_YEAR = -4004; // 0 AM = 4004 a.C. (Ussher / Adams' Chart)
+
+        const STREAMS = [
+            { id: 0, title: "I. Linaje Mesiánico y Real", sub: "Adán, Set, Noé, Sem, Abraham, David", bg: "var(--surface)", bar: "var(--surface-inset)", ink: "var(--text)" },
+            { id: 1, title: "II. Pueblos de Jafet", sub: "Gomer, Magog, Javán, Asia Menor", bg: "var(--bg)", bar: "var(--surface-raised)", ink: "var(--text)" },
+            { id: 2, title: "III. Pueblos de Cam", sub: "Cus, Nimrod, Egipto, Canaán", bg: "var(--surface)", bar: "var(--surface-raised)", ink: "var(--text)" },
+            { id: 3, title: "IV. Sem Colateral y Edom", sub: "Elam, Asur, Ismael, Cetura, Esaú", bg: "var(--bg)", bar: "var(--surface-raised)", ink: "var(--text)" },
+            { id: 4, title: "V. Sacerdocio y Levitas", sub: "Leví, Moisés, Aarón, Sadoc, Josadac", bg: "var(--surface)", bar: "var(--surface-raised)", ink: "var(--text)" },
+            { id: 5, title: "VI. Tribus y Casa de Saúl", sub: "Rubén, José, Efraín, Benjamín, Saúl", bg: "var(--bg)", bar: "var(--surface-raised)", ink: "var(--text)" }
+        ];
+
+        const ERAS = [
+            { name: "Antediluviana", start: -4004, end: -2348 },
+            { name: "Diluvio y Babel", start: -2348, end: -2000 },
+            { name: "Patriarcas", start: -2000, end: -1706 },
+            { name: "Egipto y Éxodo", start: -1706, end: -1451 },
+            { name: "Jueces", start: -1451, end: -1095 },
+            { name: "Monarquía Unida", start: -1095, end: -975 },
+            { name: "Reino Dividido y Exilio", start: -975, end: -450 }
+        ];
+
+        const MILESTONES = [
+            { year: -4004, label: "Creación de Adán (0 AM)" },
+            { year: -3017, label: "Enoc arrebatado" },
+            { year: -2348, label: "El Diluvio Universal (1656 AM)", isFlood: true },
+            { year: -2242, label: "Torre de Babel / Peleg" },
+            { year: -1921, label: "Llamado de Abraham" },
+            { year: -1706, label: "Jacob desciende a Egipto" },
+            { year: -1491, label: "Éxodo y Ley en Sinaí" },
+            { year: -1012, label: "Templo de Salomón" },
+            { year: -586,  label: "Exilio en Babilonia", isExile: true }
+        ];
+
+        // Exact biblical/Ussher lifespans used in Adams' Synchronological Chart
+        const PATRIARCH_CHRONOLOGY = {
+            "Adam":       { birth: -4004, death: -3074, exact: true, badge: "930 años · 1er Hombre" },
+            "Eva":        { birth: -4004, death: -3074, exact: false, badge: "Madre de todos" },
+            "Set":        { birth: -3874, death: -2962, exact: true, badge: "912 años" },
+            "Enós":       { birth: -3769, death: -2864, exact: true, badge: "905 años" },
+            "Cainán":     { birth: -3679, death: -2769, exact: true, badge: "910 años" },
+            "Mahalaleel": { birth: -3609, death: -2714, exact: true, badge: "895 años" },
+            "Jared":      { birth: -3544, death: -2582, exact: true, badge: "962 años" },
+            "Enoc":       { birth: -3382, death: -3017, exact: true, badge: "★ Arrebatado (365a)" },
+            "Matusalén":  { birth: -3317, death: -2348, exact: true, badge: "969 años · Récord" },
+            "Lamec":      { birth: -3130, death: -2353, exact: true, badge: "777 años" },
+            "Noé":        { birth: -2948, death: -1998, exact: true, badge: "950 años · Arca" },
+            "Jafet":      { birth: -2450, death: -1900, exact: false },
+            "Cam":        { birth: -2448, death: -1905, exact: false },
+            "Sem":        { birth: -2446, death: -1846, exact: true, badge: "600 años" },
+            "Gomer":      { birth: -2340, death: -1930, exact: false },
+            "Magog":      { birth: -2338, death: -1925, exact: false },
+            "Madai":      { birth: -2336, death: -1920, exact: false },
+            "Javán":      { birth: -2334, death: -1915, exact: false },
+            "Cus":        { birth: -2342, death: -1940, exact: false },
+            "Mizraim":    { birth: -2340, death: -1935, exact: false },
+            "Fut":        { birth: -2338, death: -1930, exact: false },
+            "Canaán":     { birth: -2335, death: -1925, exact: false },
+            "Nimrod":     { birth: -2290, death: -2010, exact: false, badge: "Babel / Nínive" },
+            "Elam":       { birth: -2344, death: -1940, exact: false },
+            "Asur":       { birth: -2342, death: -1935, exact: false },
+            "Arfaxad":    { birth: -2346, death: -1908, exact: true, badge: "438 años" },
+            "Cainán (hijo de Arfaxad)": { birth: -2328, death: -1900, exact: false },
+            "Sala":       { birth: -2311, death: -1878, exact: true, badge: "433 años" },
+            "Heber":      { birth: -2281, death: -1817, exact: true, badge: "464 años" },
+            "Peleg":      { birth: -2247, death: -2008, exact: true, badge: "239a · División" },
+            "Reu":        { birth: -2217, death: -1978, exact: true, badge: "239 años" },
+            "Serug":      { birth: -2185, death: -1955, exact: true, badge: "230 años" },
+            "Nacor":      { birth: -2155, death: -2007, exact: true, badge: "148 años" },
+            "Taré":       { birth: -2126, death: -1921, exact: true, badge: "205 años" },
+            "Abraham":    { birth: -1996, death: -1821, exact: true, badge: "175 años · Pacto" },
+            "Ismael":     { birth: -1910, death: -1773, exact: true, badge: "137 años" },
+            "Isaac":      { birth: -1896, death: -1716, exact: true, badge: "180 años" },
+            "Esaú":       { birth: -1836, death: -1700, exact: false },
+            "Israel":     { birth: -1836, death: -1689, exact: true, badge: "147a · 12 Tribus" },
+            "Rubén":      { birth: -1758, death: -1635, exact: false },
+            "Simeón":     { birth: -1757, death: -1630, exact: false },
+            "Leví":       { birth: -1755, death: -1618, exact: true, badge: "137 años" },
+            "Judá":       { birth: -1754, death: -1626, exact: false },
+            "Isacar":     { birth: -1750, death: -1625, exact: false },
+            "Zabulón":    { birth: -1748, death: -1622, exact: false },
+            "Dan":        { birth: -1753, death: -1630, exact: false },
+            "Neftalí":    { birth: -1751, death: -1628, exact: false },
+            "Gad":        { birth: -1752, death: -1628, exact: false },
+            "Aser":       { birth: -1749, death: -1625, exact: false },
+            "José":       { birth: -1745, death: -1635, exact: true, badge: "110a · Egipto" },
+            "Benjamín":   { birth: -1732, death: -1612, exact: false },
+            "Efraín":     { birth: -1712, death: -1600, exact: false },
+            "Manasés":    { birth: -1714, death: -1602, exact: false },
+            "Fares":      { birth: -1715, death: -1590, exact: false },
+            "Hezrón":     { birth: -1690, death: -1565, exact: false },
+            "Ram":        { birth: -1620, death: -1505, exact: false },
+            "Aminadab":   { birth: -1560, death: -1450, exact: false },
+            "Naasón":     { birth: -1515, death: -1415, exact: false },
+            "Salmón":     { birth: -1465, death: -1360, exact: false },
+            "Boaz":       { birth: -1310, death: -1210, exact: false },
+            "Obed":       { birth: -1220, death: -1125, exact: false },
+            "Isaí":       { birth: -1155, death: -1060, exact: false },
+            "Coat":       { birth: -1725, death: -1592, exact: true, badge: "133 años" },
+            "Amram":      { birth: -1645, death: -1508, exact: true, badge: "137 años" },
+            "Aarón":      { birth: -1574, death: -1451, exact: true, badge: "123a · Sumo Sac." },
+            "Moisés":     { birth: -1571, death: -1451, exact: true, badge: "120a · Éxodo" },
+            "Miriam":     { birth: -1580, death: -1452, exact: false },
+            "Josué":      { birth: -1535, death: -1425, exact: true, badge: "110 años" },
+            "Samuel":     { birth: -1155, death: -1060, exact: false, badge: "Profeta y Juez" },
+            "Saúl":       { birth: -1120, death: -1055, exact: false, badge: "1er Rey Israel" },
+            "Jonatán":    { birth: -1095, death: -1055, exact: false },
+            "David":      { birth: -1085, death: -1015, exact: true, badge: "70a · Rey de Israel" },
+            "Salomón":    { birth: -1033, death: -975,  exact: true, badge: "Templo Jerusalén" },
+            "Roboam":     { birth: -1016, death: -958,  exact: true, badge: "58 años" },
+            "Abías":      { birth: -980,  death: -955,  exact: false },
+            "Asa":        { birth: -975,  death: -914,  exact: false },
+            "Josafat":    { birth: -949,  death: -889,  exact: true, badge: "60 años" },
+            "Joram":      { birth: -921,  death: -885,  exact: true, badge: "36 años" },
+            "Ocozías":    { birth: -907,  death: -884,  exact: true, badge: "23 años" },
+            "Joás":       { birth: -885,  death: -839,  exact: true, badge: "46 años" },
+            "Amasías":    { birth: -864,  death: -810,  exact: true, badge: "54 años" },
+            "Azarías":    { birth: -826,  death: -758,  exact: true, badge: "68a · Uzías" },
+            "Jotam":      { birth: -783,  death: -742,  exact: true, badge: "41 años" },
+            "Acaz":       { birth: -762,  death: -726,  exact: true, badge: "36 años" },
+            "Ezequías":   { birth: -751,  death: -698,  exact: true, badge: "53 años · Reforma" },
+            "Manasés":    { birth: -710,  death: -643,  exact: true, badge: "67 años" },
+            "Amón":       { birth: -665,  death: -641,  exact: true, badge: "24 años" },
+            "Josías":     { birth: -649,  death: -609,  exact: true, badge: "40 años" },
+            "Joacim":     { birth: -634,  death: -598,  exact: true, badge: "36 años" },
+            "Sedequías":  { birth: -619,  death: -586,  exact: false, badge: "Último Rey" },
+            "Jeconías":   { birth: -616,  death: -560,  exact: false },
+            "Salatiel":   { birth: -595,  death: -530,  exact: false },
+            "Pedaías":    { birth: -588,  death: -525,  exact: false },
+            "Zorobabel":  { birth: -565,  death: -495,  exact: false, badge: "Retorno del Exilio" },
+            "Josadac":    { birth: -620,  death: -555,  exact: false }
+        };
+
+        const MESSIANIC_DIRECT = new Set([
+            "Adam", "Eva", "Set", "Enós", "Cainán", "Mahalaleel", "Jared", "Enoc", "Matusalén", "Lamec", "Noé",
+            "Sem", "Arfaxad", "Cainán (hijo de Arfaxad)", "Sala", "Heber", "Peleg", "Reu", "Serug", "Nacor", "Taré",
+            "Abraham", "Isaac", "Israel", "Judá", "Fares", "Hezrón", "Ram", "Aminadab", "Naasón", "Salmón",
+            "Boaz", "Obed", "Isaí", "David", "Salomón", "Roboam", "Abías", "Asa", "Josafat", "Joram", "Ocozías",
+            "Joás", "Amasías", "Azarías", "Jotam", "Acaz", "Ezequías", "Manasés", "Amón", "Josías", "Joacim",
+            "Jeconías", "Salatiel", "Pedaías", "Zorobabel"
+        ]);
+
+        const KEY_PEOPLE_SET = new Set([
+            ...Object.keys(PATRIARCH_CHRONOLOGY),
+            "Seba", "Havila", "Sabta", "Raama", "Sabteca", "Dedán", "Nebaiot", "Cedar", "Madián",
+            "Elifaz", "Reuel", "Amalec", "Bela", "Jobab", "Zera", "Sela", "Caleb", "Hur", "Bezaleel",
+            "Gersón", "Merari", "Eleazar", "Finees", "Sadoc", "Asaf", "Hemán", "Etán", "Absalón", "Natán", "Tamar"
+        ]);
+
+        const localPatriarchDetails = {
+            "Adam": { lugar:"Jardín del Edén", significado:"Derivado del hebreo «אָדָם» (adam), significa «hombre» o «tierra roja».", cruzada:"1 Crónicas 1; Génesis 1-5; Lucas 3:38", adicional:"Primer ser humano creado por Dios." },
+            "Eva":  { lugar:"Jardín del Edén", significado:"Del hebreo «חַוָּה» (Chavah), «madre de todos los vivientes».", cruzada:"Génesis 2:21-25, 3:1-20", adicional:"Primera mujer, esposa de Adam." },
+            "Set":  { lugar:"Fuera del Edén", significado:"Del hebreo «שֵׁת» (Sheth), «sustituto» o «designado».", cruzada:"1 Crónicas 1; Génesis 4:25-26, 5:3-8", adicional:"Tercer hijo de Adán y Eva. Heredero de la línea mesiánica." },
+            "Noé":  { lugar:"Mesopotamia", significado:"Del hebreo «נֹחַ» (Noach), «descanso o consuelo».", cruzada:"1 Crónicas 1; Génesis 5:28-32, caps. 6-9", adicional:"Construyó el arca y preservó a su familia durante el Diluvio Universal." },
+            "Abraham": { lugar:"Ur de los Caldeos", significado:"Del hebreo «אַבְרָהָם» (Avraham), «padre de multitudes».", cruzada:"1 Crónicas 1; Génesis 11:26-32, caps. 12-25", adicional:"Patriarca de la fe; recibió el pacto de Dios." },
+            "Israel": { lugar:"Padan-aram", significado:"Del hebreo «יִשְׂרָאֵל» (Yisrael), «el que lucha con Dios».", cruzada:"1 Crónicas 2; Génesis 25-35, 46-50", adicional:"Hijo de Isaac. Padre de las 12 tribus de Israel." },
+            "David": { lugar:"Belén", significado:"Del hebreo «דָּוִד» (David), «amado».", cruzada:"1 Crónicas 3; 1 Samuel 16-31; 2 Samuel", adicional:"Segundo rey de Israel unificado; recibió la promesa mesiánica del trono eterno." },
+            "Salomón": { lugar:"Jerusalén", significado:"Del hebreo «שְׁלֹמֹה» (Shlomoh), «pacífico».", cruzada:"1 Crónicas 3; 1 Reyes 1-11", adicional:"Hijo de David. Edificó el Primer Templo de Jerusalén." }
+        };
+
+        /* ── Guided Presentation Chapters (Tour de Adams Chart) ─ */
+        const PRESENTATION_CHAPTERS = [
+            {
+                kicker: "CAPÍTULO 1 DE 8 · 4004 a.C. (0 AM)",
+                title: "El Mapa Sincronológico de la Historia",
+                body: "Inspirada en la célebre Carta Sincronológica de Sebastian C. Adams (1871), esta vista muestra los linajes bíblicos como ríos paralelos del tiempo. La regla superior marca los años desde la Creación (AM) y la inferior los años antes de Cristo (a.C.).",
+                fact: "💡 Cada barra horizontal representa la vida completa de una persona, permitiendo ver de un vistazo quiénes convivieron en la misma época.",
+                focusYear: -3870,
+                scrollYear: -4020,
+                zoom: 1.0,
+                highlight: ["Adam", "Eva", "Set", "Enós"]
+            },
+            {
+                kicker: "CAPÍTULO 2 DE 8 · 4004 – 2348 a.C.",
+                title: "Longevidad Antediluviana y el Arrebatamiento de Enoc",
+                body: "Antes del Diluvio, las vidas superaban los 900 años. Observa cómo la barra de Adán (930 años) se extiende a lo largo de nueve siglos: Adán convivió simultáneamente con siete generaciones de descendientes hasta Lamec, el padre de Noé.",
+                fact: "★ Enoc vivió 365 años y «caminó con Dios, y desapareció, porque le llevó Dios» en 3017 a.C., tan solo 57 años después de la muerte de Adán.",
+                focusYear: -3100,
+                scrollYear: -3800,
+                zoom: 1.05,
+                highlight: ["Adam", "Set", "Jared", "Enoc", "Matusalén", "Lamec"]
+            },
+            {
+                kicker: "CAPÍTULO 3 DE 8 · 2348 a.C. (1656 AM)",
+                title: "Matusalén y el Diluvio Universal",
+                body: "Matusalén (969 años) es el ser humano más longevo registrado en las Escrituras. Su nombre significa proféticamente «cuando muera, será enviado», y según la cronología del Génesis falleció exactamente en el año 1656 AM: el año del Diluvio.",
+                fact: "🌊 Mueve el escáner sobre la línea vertical del 2348 a.C. para ver la transición abrupta donde sólo Noé y su familia cruzan al mundo post-diluviano.",
+                focusYear: -2348,
+                scrollYear: -2950,
+                zoom: 1.1,
+                highlight: ["Matusalén", "Lamec", "Noé", "Sem", "Cam", "Jafet"]
+            },
+            {
+                kicker: "CAPÍTULO 4 DE 8 · 2348 – 2100 a.C.",
+                title: "Los Tres Grandes Ríos: Sem, Cam y Jafet",
+                body: "Tras el Diluvio, la humanidad se bifurca desde Noé en tres corrientes paralelas en 1 Crónicas 1: Jafet (pueblos del norte y Asia Menor), Cam (Mesopotamia temprana, Nimrod, Egipto y Canaán) y Sem (la línea de la promesa). Nota cómo la longevidad comienza a descender drásticamente.",
+                fact: "🏛️ En la época de Peleg («división», 2247–2008 a.C.) ocurrió la confusión de lenguas en Babel y el esparcimiento de las naciones.",
+                focusYear: -2242,
+                scrollYear: -2550,
+                zoom: 1.1,
+                highlight: ["Noé", "Sem", "Cam", "Jafet", "Nimrod", "Arfaxad", "Heber", "Peleg"]
+            },
+            {
+                kicker: "CAPÍTULO 5 DE 8 · 1996 – 1821 a.C.",
+                title: "El Secreto de Adams Chart: ¡Sem y Abraham convivieron!",
+                body: "Uno de los mayores asombros al desplegar la Carta de Adams es comprobar que Sem (hijo de Noé, 600 años) seguía vivo cuando Abraham fue llamado de Ur de los Caldeos, e incluso llegó a vivir cuando Isaac ya tenía 50 años.",
+                fact: "⚡ Al situar el escáner en 1900 a.C., aparecen juntos como contemporáneos Sem (546 años), Heber (381 años), Abraham (96 años) e Ismael (10 años).",
+                focusYear: -1900,
+                scrollYear: -2250,
+                zoom: 1.25,
+                highlight: ["Sem", "Heber", "Taré", "Abraham", "Ismael", "Isaac"]
+            },
+            {
+                kicker: "CAPÍTULO 6 DE 8 · 1836 – 1451 a.C.",
+                title: "Las Doce Tribus, Egipto y el Éxodo",
+                body: "Desde Isaac el río se abre en Esaú (Edom) e Israel (Jacob). Sus doce hijos dan origen a las doce tribus, descendiendo a Egipto en el tiempo de José. Siglos después, de la corriente de Leví surgen Aarón y Moisés para liderar el Éxodo (1491 a.C.).",
+                fact: "📜 Las corrientes IV, V y VI muestran en paralelo los reyes edomitas, el sacerdocio aarónico y el liderazgo militar de Josué.",
+                focusYear: -1500,
+                scrollYear: -1920,
+                zoom: 1.25,
+                highlight: ["Israel", "José", "Leví", "Judá", "Aarón", "Moisés", "Josué"]
+            },
+            {
+                kicker: "CAPÍTULO 7 DE 8 · 1085 – 975 a.C.",
+                title: "La Monarquía Unida: Saúl, David y Salomón",
+                body: "El linaje de Judá culmina en Belén con David, consolidando el reino tras Saúl (de la tribu de Benjamín). Salomón edifica el Primer Templo en Jerusalén (1012 a.C.) mientras el sacerdocio levítico sirve junto al trono.",
+                fact: "👑 En 1020 a.C. coinciden el rey David al final de su reinado y la juventud de Salomón junto al sumo sacerdote Sadoc.",
+                focusYear: -1020,
+                scrollYear: -1350,
+                zoom: 1.4,
+                highlight: ["Boaz", "Obed", "Isaí", "Saúl", "David", "Salomón"]
+            },
+            {
+                kicker: "CAPÍTULO 8 DE 8 · 975 – 495 a.C.",
+                title: "Reyes de Judá, el Exilio y Zorobabel",
+                body: "Los capítulos 3 al 9 de 1 Crónicas registran el linaje real de Judá a través de reyes reformadores como Ezequías y Josías hasta la deportación a Babilonia (586 a.C.), preservando la línea hasta Zorobabel en el retorno del exilio.",
+                fact: "🏛️ La Carta completa queda ahora a tu disposición: haz clic en cualquier barra para abrir su ficha o explora libremente con el escáner.",
+                focusYear: -600,
+                scrollYear: -980,
+                zoom: 1.3,
+                highlight: ["Roboam", "Ezequías", "Josías", "Sedequías", "Jeconías", "Zorobabel", "Josadac"]
+            }
+        ];
+
+        /* ── Data Initialization ────────────────────────────── */
+        function getCorreccionesData() {
+            return JSON.parse(localStorage.getItem("correcciones_genealogia") || localStorage.getItem("genealogia_correcciones_v1") || '{"modificaciones":{},"nuevos":[]}');
+        }
+
+        function buildRelationshipMap() {
+            if (typeof GENEALOGIA_DATA === 'undefined') return;
+            const stored = getCorreccionesData();
+            if (stored.nuevos && stored.nuevos.length > 0) {
+                stored.nuevos.forEach(newP => {
+                    const idx = GENEALOGIA_DATA.findIndex(r => r["Hijos"] === newP["Hijos"] && r["Referencia"] === newP["Referencia"]);
+                    if (idx !== -1) GENEALOGIA_DATA.splice(idx, 1);
+                });
+                GENEALOGIA_DATA.push(...stored.nuevos);
+            }
+
+            function getOrCreate(name) {
+                if (!name) return null;
+                const n = name.trim();
+                if (!n) return null;
+                if (!people[n]) {
+                    people[n] = {
+                        name: n, gender: "M", father: "", mother: "",
+                        birthPlace: "", spouses: new Set(), children: [],
+                        notes: "", reference: "", meaning: "",
+                        birth: null, death: null, exact: false, stream: 0, gen: 99, badge: ""
+                    };
+                }
+                return people[n];
+            }
+
+            GENEALOGIA_DATA.forEach(row => {
+                const cn = row["Hijos"], fn = row["Padre"], mn = row["Madre"];
+                const child = getOrCreate(cn), father = getOrCreate(fn), mother = getOrCreate(mn);
+                if (child) {
+                    if (fn) child.father = fn;
+                    if (mn) child.mother = mn;
+                    child.gender = row["Género Hijos"] || "M";
+                    child.birthPlace = (row["Lugar de nacimiento"] || "").replace(/\s*\(padre\)\s*/i, "").trim();
+                    const fi = row["Información Adicional"] || row["Notas"] || "";
+                    const cm = fi.match(/Sobre (?:el hijo|la hija) \([^)]+\):\s*(.+?)(?:\s*\|\s*Sobre (?:el padre|la madre)|$)/i);
+                    child.notes = cm ? cm[1].trim() : fi;
+                    child.reference = row["Referencia"] || "";
+                }
+                if (father && cn) {
+                    father.children.push({ name: cn, gender: row["Género Hijos"] || "M" });
+                    if (mn) { father.spouses.add(mn); mother.spouses.add(fn); }
+                }
+                if (mother && cn) mother.children.push({ name: cn, gender: row["Género Hijos"] || "M" });
+                if (fn && row["Significado del Nombre (Padre)"]) father.meaning = row["Significado del Nombre (Padre)"];
+            });
+
+            Object.keys(localPatriarchDetails).forEach(name => {
+                const local = localPatriarchDetails[name], p = getOrCreate(name);
+                if (!p) return;
+                if (local.lugar) p.birthPlace = local.lugar;
+                if (local.significado) p.meaning = local.significado;
+                if (local.adicional) p.notes = local.adicional;
+                if (local.cruzada) p.reference = local.cruzada;
+            });
+
+            if (stored.modificaciones) {
+                Object.keys(stored.modificaciones).forEach(name => {
+                    const p = getOrCreate(name);
+                    if (p) {
+                        const mods = stored.modificaciones[name];
+                        if (mods.meaning !== undefined) p.meaning = mods.meaning;
+                        if (mods.birthPlace !== undefined) p.birthPlace = mods.birthPlace;
+                        if (mods.notes !== undefined) p.notes = mods.notes;
+                        if (mods.gender !== undefined) p.gender = mods.gender;
+                        if (mods.father !== undefined) p.father = mods.father;
+                        if (mods.mother !== undefined) p.mother = mods.mother;
+                    }
+                });
+            }
+
+            // Ensure key genealogical connectors exist
+            if (people["Eva"]) people["Eva"].gender = "F";
+            if (people["Sem"] && !people["Sem"].father) people["Sem"].father = "Noé";
+            if (people["Cam"] && !people["Cam"].father) people["Cam"].father = "Noé";
+            if (people["Jafet"] && !people["Jafet"].father) people["Jafet"].father = "Noé";
+            if (people["Efraín"] && !people["Efraín"].father) people["Efraín"].father = "José";
+            if (people["Manasés"] && !people["Manasés"].father) people["Manasés"].father = "José";
+        }
+
+        function getLineagePath(name) {
+            const path = [], visited = new Set();
+            let cur = people[name];
+            while (cur && !visited.has(cur.name)) {
+                path.unshift(cur.name);
+                visited.add(cur.name);
+                if (cur.name.toLowerCase() === "adam") break;
+                cur = people[cur.father];
+            }
+            return path;
+        }
+
+        function assignStreamsAndChronology() {
+            // 1. Seed exact/reference dates
+            Object.keys(PATRIARCH_CHRONOLOGY).forEach(name => {
+                if (!people[name]) return;
+                const c = PATRIARCH_CHRONOLOGY[name];
+                people[name].birth = c.birth;
+                people[name].death = c.death;
+                people[name].exact = !!c.exact;
+                people[name].badge = c.badge || "";
+            });
+
+            // 2. Generation depth calculation
+            Object.keys(people).forEach(name => {
+                const path = getLineagePath(name);
+                people[name].gen = path[0] && path[0].toLowerCase() === "adam" ? path.length - 1 : 99;
+                people[name].path = path;
+            });
+
+            // 3. Multi-pass propagation for birth years
+            let changed = true, pass = 0;
+            while (changed && pass < 25) {
+                changed = false;
+                pass++;
+                Object.keys(people).forEach(name => {
+                    const p = people[name];
+                    if (p.birth !== null) return;
+
+                    if (p.father && people[p.father] && people[p.father].birth !== null) {
+                        const fBirth = people[p.father].birth;
+                        const step = fBirth < -2348 ? 85 : (fBirth < -1800 ? 45 : (fBirth < -1100 ? 38 : 28));
+                        p.birth = Math.min(-450, fBirth + step);
+                        changed = true;
+                        return;
+                    }
+                    if (p.mother && people[p.mother] && people[p.mother].birth !== null) {
+                        const mBirth = people[p.mother].birth;
+                        p.birth = Math.min(-450, mBirth + 30);
+                        changed = true;
+                        return;
+                    }
+                    if (p.children.length > 0) {
+                        const childBirths = p.children.map(c => people[c.name] && people[c.name].birth).filter(b => b !== null);
+                        if (childBirths.length > 0) {
+                            p.birth = Math.max(-4004, Math.min(...childBirths) - 32);
+                            changed = true;
+                        }
+                    }
+                });
+            }
+
+            // 4. Fallback births and estimated deaths
+            Object.keys(people).forEach(name => {
+                const p = people[name];
+                if (p.birth === null) {
+                    p.birth = p.gen !== 99 ? Math.min(-480, -4004 + p.gen * 45) : -1200;
+                }
+                if (p.death === null) {
+                    let span = 72;
+                    if (p.birth < -2450) span = 750;
+                    else if (p.birth < -2200) span = 340;
+                    else if (p.birth < -1850) span = 165;
+                    else if (p.birth < -1500) span = 115;
+                    else if (p.birth < -1100) span = 85;
+                    p.death = Math.min(-430, p.birth + span);
+                }
+                if (p.death <= p.birth + 12) p.death = p.birth + 35;
+
+                // 5. Assign Stream (0..5)
+                const path = p.path || getLineagePath(name);
+                if (MESSIANIC_DIRECT.has(name)) {
+                    p.stream = 0;
+                } else if (path.includes("Jafet")) {
+                    p.stream = 1;
+                } else if (path.includes("Cam")) {
+                    p.stream = 2;
+                } else if (path.includes("Leví")) {
+                    p.stream = 4;
+                } else if (path.includes("Ismael") || path.includes("Esaú") || path.includes("Elam") || path.includes("Asur") || path.includes("Seir") || path.includes("Cetura") || p.mother === "Cetura" || path.includes("Zera") || path.includes("Sela") || path.includes("Jerameel") || path.includes("Caleb")) {
+                    p.stream = 3;
+                } else if (path.includes("Rubén") || path.includes("Simeón") || path.includes("Isacar") || path.includes("Zabulón") || path.includes("Dan") || path.includes("Neftalí") || path.includes("Gad") || path.includes("Aser") || path.includes("José") || path.includes("Benjamín") || path.includes("Ner") || path.includes("Saúl")) {
+                    p.stream = 5;
+                } else if (path.includes("Judá") || path.includes("David")) {
+                    p.stream = 0;
+                } else {
+                    p.stream = 3;
+                }
+            });
+        }
+
+        /* ── Chart Geometry & Rendering ──────────────────────── */
+        const LEFT_LABEL_W = 190;
+        const RIGHT_PAD = 80;
+        const TOP_HEADER_H = 74;
+        const BOTTOM_FOOTER_H = 38;
+        const BAR_H = 22;
+        const LANE_GAP = 6;
+        const STREAM_PAD_Y = 14;
+
+        let chartLayout = { totalW: 3600, totalH: 800, streamBoxes: [], placedNodes: {} };
+
+        function yearToX(year, totalW) {
+            const usableW = totalW - LEFT_LABEL_W - RIGHT_PAD;
+            const ratio = (year - MIN_YEAR) / (MAX_YEAR - MIN_YEAR);
+            return LEFT_LABEL_W + ratio * usableW;
+        }
+
+        function xToYear(x, totalW) {
+            const usableW = totalW - LEFT_LABEL_W - RIGHT_PAD;
+            const ratio = (x - LEFT_LABEL_W) / usableW;
+            return Math.round(MIN_YEAR + ratio * (MAX_YEAR - MIN_YEAR));
+        }
+
+        function formatYearBC(y) {
+            return y < 0 ? `${Math.abs(Math.round(y))} a.C.` : `${Math.round(y)} d.C.`;
+        }
+        function formatYearAM(y) {
+            return `${Math.max(0, Math.round(y - CREATION_YEAR))} AM`;
+        }
+
+        function renderAdamsChart() {
+            const svg = document.getElementById("adamsSvg");
+            svg.innerHTML = "";
+
+            const baseW = detailMode === "all" ? 4200 : 3400;
+            const totalW = Math.round(baseW * zoomLevel);
+
+            // Filter characters for current detailMode
+            const activePeople = Object.values(people).filter(p => {
+                if (detailMode === "all") return true;
+                return KEY_PEOPLE_SET.has(p.name);
+            });
+
+            // Greedy interval-packing per stream so lifespan bars never overlap
+            const streamNodes = [[], [], [], [], [], []];
+            activePeople.forEach(p => {
+                streamNodes[p.stream].push(p);
+            });
+
+            const streamBoxes = [];
+            const placedNodes = {};
+            let currentY = TOP_HEADER_H;
+
+            STREAMS.forEach((streamDef, sIdx) => {
+                const list = streamNodes[sIdx].sort((a, b) => {
+                    // Prioritize Messianic direct / exact dates near top of stream
+                    if (MESSIANIC_DIRECT.has(a.name) && !MESSIANIC_DIRECT.has(b.name)) return -1;
+                    if (!MESSIANIC_DIRECT.has(a.name) && MESSIANIC_DIRECT.has(b.name)) return 1;
+                    return a.birth - b.birth;
+                });
+
+                const laneEnds = []; // track rightmost pixel X (including label buffer) per lane
+                const placedInStream = [];
+
+                list.forEach(p => {
+                    const x1 = yearToX(p.birth, totalW);
+                    const x2 = yearToX(p.death, totalW);
+                    const barW = Math.max(26, x2 - x1);
+                    const labelNeed = Math.max(barW, p.name.length * 6.8 + 46);
+                    const occupyRight = x1 + labelNeed + 14;
+
+                    let assignedLane = -1;
+                    for (let l = 0; l < laneEnds.length; l++) {
+                        if (laneEnds[l] <= x1) {
+                            assignedLane = l;
+                            laneEnds[l] = occupyRight;
+                            break;
+                        }
+                    }
+                    if (assignedLane === -1) {
+                        assignedLane = laneEnds.length;
+                        laneEnds.push(occupyRight);
+                    }
+
+                    placedInStream.push({ person: p, lane: assignedLane, x1, x2, barW });
+                });
+
+                const numLanes = Math.max(2, laneEnds.length);
+                const streamH = STREAM_PAD_Y * 2 + numLanes * (BAR_H + LANE_GAP);
+
+                streamBoxes.push({
+                    stream: streamDef,
+                    y: currentY,
+                    height: streamH,
+                    items: placedInStream
+                });
+
+                placedInStream.forEach(item => {
+                    const py = currentY + STREAM_PAD_Y + item.lane * (BAR_H + LANE_GAP);
+                    placedNodes[item.person.name] = {
+                        ...item,
+                        y: py,
+                        cy: py + BAR_H / 2
+                    };
+                });
+
+                currentY += streamH;
+            });
+
+            const totalH = currentY + BOTTOM_FOOTER_H;
+            chartLayout = { totalW, totalH, streamBoxes, placedNodes };
+
+            svg.setAttribute("width", totalW);
+            svg.setAttribute("height", totalH);
+            svg.setAttribute("viewBox", `0 0 ${totalW} ${totalH}`);
+
+            const ns = "http://www.w3.org/2000/svg";
+            function el(tag, attrs = {}, textContent = null) {
+                const node = document.createElementNS(ns, tag);
+                for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+                if (textContent !== null) node.textContent = textContent;
+                return node;
+            }
+
+            // Defs for Hatching Flood Pattern (Neo-Skeuo monochrome technical hatching)
+            const defs = el("defs");
+            const pat = el("pattern", { id: "floodHatch", width: 8, height: 8, patternTransform: "rotate(45 0 0)", patternUnits: "userSpaceOnUse" });
+            pat.appendChild(el("line", { x1: 0, y1: 0, x2: 0, y2: 8, stroke: "var(--border)", "stroke-width": 1, opacity: 0.2 }));
+            defs.appendChild(pat);
+            svg.appendChild(defs);
+
+            // 1. Stream Horizontal Bands
+            streamBoxes.forEach((box, idx) => {
+                svg.appendChild(el("rect", {
+                    x: 0, y: box.y, width: totalW, height: box.height,
+                    fill: box.stream.bg
+                }));
+                svg.appendChild(el("line", {
+                    x1: 0, y1: box.y + box.height, x2: totalW, y2: box.y + box.height,
+                    stroke: "var(--border)", "stroke-width": idx === streamBoxes.length - 1 ? 2 : 1,
+                    "stroke-dasharray": idx === streamBoxes.length - 1 ? "none" : "4,3",
+                    opacity: 0.65
+                }));
+            });
+
+            // 2. Vertical Century Grid Lines (-4000 to -500)
+            for (let yr = -4000; yr <= -400; yr += 100) {
+                const gx = yearToX(yr, totalW);
+                const isMajor = yr % 500 === 0;
+                svg.appendChild(el("line", {
+                    x1: gx, y1: TOP_HEADER_H - 22, x2: gx, y2: totalH - BOTTOM_FOOTER_H + 14,
+                    stroke: "var(--border-subtle)",
+                    "stroke-width": isMajor ? 1.2 : 0.7,
+                    "stroke-dasharray": isMajor ? "none" : "2,4",
+                    opacity: isMajor ? 0.55 : 0.3
+                }));
+            }
+
+            // 3. Era Top Strips & Milestone Vertical Ribbons
+            ERAS.forEach((era, i) => {
+                const x1 = yearToX(era.start, totalW);
+                const x2 = yearToX(era.end, totalW);
+                svg.appendChild(el("rect", {
+                    x: x1, y: 26, width: Math.max(2, x2 - x1), height: 22,
+                    fill: i % 2 === 0 ? "var(--surface)" : "var(--surface-raised)",
+                    stroke: "var(--border)", "stroke-width": 1
+                }));
+                if (x2 - x1 > 70) {
+                    svg.appendChild(el("text", {
+                        x: (x1 + x2) / 2, y: 41,
+                        "text-anchor": "middle", "font-size": 10, "font-weight": 800,
+                        fill: "var(--text)", class: "adams-mono"
+                    }, era.name.toUpperCase()));
+                }
+            });
+
+            // Flood Deluge Band (~2348 BC) & Milestones
+            const floodX = yearToX(-2348, totalW);
+            svg.appendChild(el("rect", {
+                x: floodX - 6, y: TOP_HEADER_H, width: 12, height: totalH - TOP_HEADER_H - BOTTOM_FOOTER_H,
+                fill: "url(#floodHatch)"
+            }));
+            MILESTONES.forEach(m => {
+                const mx = yearToX(m.year, totalW);
+                svg.appendChild(el("line", {
+                    x1: mx, y1: 48, x2: mx, y2: totalH - BOTTOM_FOOTER_H,
+                    stroke: m.isFlood || m.isExile ? "var(--border)" : "var(--border-subtle)",
+                    "stroke-width": m.isFlood || m.isExile ? 1.8 : 1.1,
+                    "stroke-dasharray": m.isFlood ? "none" : "5,3",
+                    opacity: 0.75
+                }));
+                // Milestone Flag at top (Neo-Skeuo monochrome tag)
+                const tagW = m.label.length * 5.6 + 14;
+                svg.appendChild(el("rect", {
+                    x: mx - tagW / 2, y: 51, width: tagW, height: 17, rx: 0,
+                    fill: m.isFlood || m.isExile ? "var(--surface-inset)" : "var(--surface-raised)",
+                    stroke: "var(--border)", "stroke-width": 1
+                }));
+                svg.appendChild(el("text", {
+                    x: mx, y: 63, "text-anchor": "middle",
+                    "font-size": 9, "font-weight": 700, fill: "var(--text)", class: "adams-mono"
+                }, m.label));
+            });
+
+            // 4. Top Ruler (Anno Mundi) & Bottom Ruler (a.C.)
+            svg.appendChild(el("rect", { x: LEFT_LABEL_W, y: 0, width: totalW - LEFT_LABEL_W, height: 26, fill: "var(--surface)", stroke: "var(--border)", "stroke-width": 1.5 }));
+            svg.appendChild(el("rect", { x: LEFT_LABEL_W, y: totalH - BOTTOM_FOOTER_H, width: totalW - LEFT_LABEL_W, height: BOTTOM_FOOTER_H, fill: "var(--surface)", stroke: "var(--border)", "stroke-width": 1.5 }));
+
+            for (let yr = -4000; yr <= -400; yr += 100) {
+                const rx = yearToX(yr, totalW);
+                const stepSkip = zoomLevel < 0.7 ? 200 : 100;
+                if (Math.abs(yr) % stepSkip === 0) {
+                    svg.appendChild(el("text", {
+                        x: rx, y: 16, "text-anchor": "middle",
+                        "font-size": 10, "font-weight": 700, fill: "var(--muted)", class: "adams-mono"
+                    }, `${4004 + yr} AM`));
+                    svg.appendChild(el("text", {
+                        x: rx, y: totalH - 14, "text-anchor": "middle",
+                        "font-size": 10.5, "font-weight": 800, fill: "var(--text)", class: "adams-mono"
+                    }, `${Math.abs(yr)} a.C.`));
+                }
+            }
+
+            // 5. Branching SVG Connectors (Parent -> Child at child birth year)
+            const branchLayer = el("g", { id: "branchLayer" });
+            if (showBranches) {
+                Object.values(placedNodes).forEach(childNode => {
+                    const p = childNode.person;
+                    if (!p.father || !placedNodes[p.father]) return;
+                    const parentNode = placedNodes[p.father];
+
+                    const startX = Math.max(parentNode.x1 + 4, Math.min(parentNode.x1 + parentNode.barW - 4, childNode.x1));
+                    const startY = parentNode.cy;
+                    const endX = childNode.x1;
+                    const endY = childNode.cy;
+
+                    const isCrossStream = p.stream !== people[p.father].stream;
+                    const isMessianicLink = MESSIANIC_DIRECT.has(p.name) && MESSIANIC_DIRECT.has(p.father);
+
+                    const midX = startX + (endX - startX) * 0.35;
+                    const pathD = `M ${startX} ${startY} C ${midX} ${startY}, ${startX} ${endY}, ${endX} ${endY}`;
+
+                    branchLayer.appendChild(el("path", {
+                        d: pathD,
+                        fill: "none",
+                        stroke: isMessianicLink ? "var(--border)" : "var(--border-subtle)",
+                        "stroke-width": isMessianicLink ? 2 : (isCrossStream ? 1.2 : 0.9),
+                        "stroke-dasharray": isCrossStream && !isMessianicLink ? "4,3" : "none",
+                        opacity: isMessianicLink ? 0.85 : 0.45
+                    }));
+                });
+            }
+            svg.appendChild(branchLayer);
+
+            // 6. Lifespan Bars (Barras de Longevidad)
+            const barsLayer = el("g", { id: "barsLayer" });
+            Object.values(placedNodes).forEach(item => {
+                const p = item.person;
+                const streamDef = STREAMS[p.stream];
+                const isDirect = MESSIANIC_DIRECT.has(p.name);
+                const isFeatured = presentationFeatured.has(p.name);
+                const isSelected = selectedPersonName === p.name;
+
+                const g = el("g", {
+                    class: `lifespan-group${isSelected ? " selected" : ""}${isFeatured ? " featured" : ""}${presentationFeatured.size > 0 && !isFeatured ? " dimmed" : ""}`,
+                    "data-name": p.name
+                });
+
+                // Main lifespan bar rectangle (square Neo-Skeuo engraving)
+                g.appendChild(el("rect", {
+                    class: "lifespan-rect",
+                    x: item.x1, y: item.y,
+                    width: item.barW, height: BAR_H,
+                    rx: 0,
+                    fill: isDirect ? "var(--surface-inset)" : streamDef.bar,
+                    stroke: "var(--border)",
+                    "stroke-width": isDirect ? 1.8 : 1.1,
+                    "stroke-dasharray": p.exact ? "none" : "4,2"
+                }));
+
+                // Gender dot inside left of bar
+                g.appendChild(el("circle", {
+                    cx: item.x1 + 8, cy: item.cy, r: 3.2,
+                    fill: p.gender === "F" ? "var(--f-dot)" : "var(--m-dot)",
+                    stroke: "var(--border)", "stroke-width": 1
+                }));
+
+                // Text label inside bar or extending cleanly to right
+                const age = Math.round(p.death - p.birth);
+                const labelText = item.barW > 135 && p.exact
+                    ? `${p.name} (${age}a)`
+                    : p.name;
+
+                const textX = item.x1 + 15;
+                g.appendChild(el("text", {
+                    x: textX, y: item.cy + 3.5,
+                    "font-size": isDirect ? 11 : 10,
+                    "font-weight": isDirect ? 800 : 600,
+                    fill: streamDef.ink
+                }, labelText));
+
+                g.addEventListener("mouseenter", e => showTooltip(e, p));
+                g.addEventListener("mousemove", e => moveTooltip(e));
+                g.addEventListener("mouseleave", hideTooltip);
+                g.addEventListener("click", e => {
+                    e.stopPropagation();
+                    selectPerson(p.name);
+                });
+
+                barsLayer.appendChild(g);
+            });
+            svg.appendChild(barsLayer);
+
+            // 7. Vertical Synchronological Scanner Line
+            const scanX = yearToX(scannerYear, totalW);
+            const scannerG = el("g", { id: "scannerLineGroup", "pointer-events": "none" });
+            scannerG.appendChild(el("line", {
+                id: "scannerRuleLine",
+                x1: scanX, y1: 0, x2: scanX, y2: totalH,
+                stroke: "var(--border)", "stroke-width": 2, "stroke-dasharray": "6,3"
+            }));
+            scannerG.appendChild(el("polygon", {
+                id: "scannerTopTri",
+                points: `${scanX - 7},0 ${scanX + 7},0 ${scanX},12`,
+                fill: "var(--border)"
+            }));
+            svg.appendChild(scannerG);
+
+            // 8. Left Sticky Stream Header Column (rendered on top so scrolled content slides cleanly behind)
+            const wrapEl = document.getElementById("chartScrollWrap");
+            const currentScrollX = wrapEl ? wrapEl.scrollLeft : 0;
+            const labelColumn = el("g", {
+                id: "streamHeaderColumn",
+                transform: `translate(${currentScrollX}, 0)`
+            });
+            labelColumn.appendChild(el("rect", {
+                x: 0, y: 0, width: LEFT_LABEL_W, height: totalH,
+                fill: "var(--surface)", stroke: "var(--border)", "stroke-width": 2
+            }));
+            labelColumn.appendChild(el("text", {
+                x: LEFT_LABEL_W / 2, y: 34, "text-anchor": "middle",
+                "font-size": 13, fill: "var(--text)", class: "adams-title-tech"
+            }, "CARTA DE ADAMS"));
+            labelColumn.appendChild(el("text", {
+                x: LEFT_LABEL_W / 2, y: 52, "text-anchor": "middle",
+                "font-size": 9, fill: "var(--subtle)", class: "adams-mono"
+            }, "4004 a.C. — 450 a.C."));
+
+            streamBoxes.forEach(box => {
+                labelColumn.appendChild(el("rect", {
+                    x: 0, y: box.y, width: LEFT_LABEL_W, height: box.height,
+                    fill: box.stream.bg, stroke: "var(--border)", "stroke-width": 1
+                }));
+                labelColumn.appendChild(el("rect", {
+                    x: 8, y: box.y + 10, width: 6, height: box.height - 20,
+                    fill: box.stream.bar, stroke: "var(--border)", "stroke-width": 1
+                }));
+                labelColumn.appendChild(el("text", {
+                    x: 22, y: box.y + 24,
+                    "font-size": 10.5, "font-weight": 800, fill: "var(--text)"
+                }, box.stream.title));
+                labelColumn.appendChild(el("text", {
+                    x: 22, y: box.y + 39,
+                    "font-size": 8.5, fill: "var(--muted)"
+                }, box.stream.sub));
+            });
+            svg.appendChild(labelColumn);
+
+            renderMinimap();
+            updateScannerYear(scannerYear, false);
+        }
+
+        /* ── Contemporaries Scanner Logic ────────────────────── */
+        function updateScannerYear(year, moveLine = true) {
+            scannerYear = Math.max(MIN_YEAR, Math.min(MAX_YEAR, Math.round(year)));
+            const badge = document.getElementById("scannerYearBadge");
+            badge.textContent = `Escáner: ${formatYearBC(scannerYear)} · ${formatYearAM(scannerYear)}`;
+
+            if (moveLine) {
+                const scanX = yearToX(scannerYear, chartLayout.totalW);
+                const line = document.getElementById("scannerRuleLine");
+                const tri = document.getElementById("scannerTopTri");
+                if (line) { line.setAttribute("x1", scanX); line.setAttribute("x2", scanX); }
+                if (tri) { tri.setAttribute("points", `${scanX - 7},0 ${scanX + 7},0 ${scanX},12`); }
+            }
+
+            // Find all people alive at scannerYear
+            const pool = detailMode === "all"
+                ? Object.values(people)
+                : Object.values(people).filter(p => KEY_PEOPLE_SET.has(p.name));
+
+            const alive = pool.filter(p => p.birth <= scannerYear && p.death >= scannerYear)
+                .sort((a, b) => {
+                    const aDirect = MESSIANIC_DIRECT.has(a.name) ? 0 : 1;
+                    const bDirect = MESSIANIC_DIRECT.has(b.name) ? 0 : 1;
+                    if (aDirect !== bDirect) return aDirect - bDirect;
+                    return a.birth - b.birth;
+                });
+
+            const listEl = document.getElementById("scannerList");
+            listEl.innerHTML = "";
+
+            if (alive.length === 0) {
+                listEl.innerHTML = `<span style="font-size:11px; color:var(--subtle); font-style:italic;">Ningún personaje registrado en este año exacto.</span>`;
+                return;
+            }
+
+            alive.slice(0, 30).forEach(p => {
+                const age = Math.round(scannerYear - p.birth);
+                const chip = document.createElement("button");
+                chip.className = "contemp-chip";
+                chip.innerHTML = `
+                    <span style="width:7px;height:7px;border-radius:50%;background:${p.gender === 'F' ? 'var(--f-dot)' : 'var(--m-dot)'};border:1px solid var(--border);display:inline-block;"></span>
+                    <span>${p.name}</span>
+                    <span class="contemp-age">(${age} años)</span>
+                `;
+                chip.onclick = () => focusAndSelectPerson(p.name);
+                listEl.appendChild(chip);
+            });
+
+            if (alive.length > 30) {
+                const more = document.createElement("span");
+                more.style.cssText = "font-size:10.5px; color:var(--subtle); align-self:center; padding:0 6px;";
+                more.textContent = `+${alive.length - 30} más`;
+                listEl.appendChild(more);
+            }
+        }
+
+        /* ── Minimap ────────────────────────────────────────── */
+        function renderMinimap() {
+            const erasBox = document.getElementById("minimapEras");
+            erasBox.innerHTML = "";
+            const totalSpan = MAX_YEAR - MIN_YEAR;
+            ERAS.forEach((era, idx) => {
+                const wPct = ((era.end - era.start) / totalSpan) * 100;
+                const seg = document.createElement("div");
+                seg.className = "minimap-era-seg";
+                seg.style.width = `${wPct}%`;
+                seg.textContent = era.name;
+                erasBox.appendChild(seg);
+            });
+            updateMinimapViewport();
+        }
+
+        function updateMinimapViewport() {
+            const wrap = document.getElementById("chartScrollWrap");
+            const vp = document.getElementById("minimapViewport");
+            if (!wrap || !vp || !chartLayout.totalW) return;
+            const leftPct = (wrap.scrollLeft / chartLayout.totalW) * 100;
+            const widthPct = (wrap.clientWidth / chartLayout.totalW) * 100;
+            vp.style.left = `${Math.max(0, Math.min(100, leftPct))}%`;
+            vp.style.width = `${Math.max(4, Math.min(100, widthPct))}%`;
+        }
+
+        /* ── Tooltip & Selection Drawer ─────────────────────── */
+        const tooltip = document.getElementById("adamsTooltip");
+        function showTooltip(e, p) {
+            const age = Math.round(p.death - p.birth);
+            tooltip.innerHTML = `
+                <div style="font-weight:800; font-size:12.5px; color:var(--text); margin-bottom:3px;">${p.name}</div>
+                <div style="font-family:monospace; font-size:10.5px; color:var(--text); font-weight:700;">
+                    ${formatYearBC(p.birth)} – ${formatYearBC(p.death)} (${age} años)
+                </div>
+                <div style="font-size:10.5px; color:var(--muted); margin-top:2px;">
+                    ${p.exact ? "✓ Cronología bíblica directa" : "≈ Estimación generacional"}
+                </div>
+                ${p.badge ? `<div style="font-size:10.5px; font-weight:700; margin-top:3px;">${p.badge}</div>` : ""}
+            `;
+            tooltip.style.opacity = "1";
+            moveTooltip(e);
+        }
+        function moveTooltip(e) {
+            tooltip.style.left = `${Math.min(window.innerWidth - 270, e.clientX + 14)}px`;
+            tooltip.style.top = `${Math.max(10, e.clientY - 46)}px`;
+        }
+        function hideTooltip() { tooltip.style.opacity = "0"; }
+
+        function avatarGradient(name) {
+            let h = 0;
+            for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+            const h1 = Math.abs(h % 360), h2 = (h1 + 55) % 360;
+            return `linear-gradient(135deg, hsl(${h1},65%,48%) 0%, hsl(${h2},65%,38%) 100%)`;
+        }
+
+        function selectPerson(name) {
+            selectedPersonName = name;
+            document.querySelectorAll(".lifespan-group").forEach(g => {
+                g.classList.toggle("selected", g.dataset.name === name);
+            });
+            const p = people[name];
+            if (!p) return;
+
+            const age = Math.round(p.death - p.birth);
+            document.getElementById("drawName").textContent = p.name;
+            document.getElementById("drawMeaning").textContent = p.meaning || "Significado no registrado.";
+            document.getElementById("drawStream").textContent = STREAMS[p.stream].title;
+            document.getElementById("drawBirthYear").textContent = `${formatYearBC(p.birth)} (${formatYearAM(p.birth)})`;
+            document.getElementById("drawDeathYear").textContent = `${formatYearBC(p.death)} (${formatYearAM(p.death)})`;
+            document.getElementById("drawAge").textContent = `${age} años ${p.exact ? "(Exacta)" : "(Est.)"}`;
+            document.getElementById("drawGen").textContent = p.gen !== 99 ? `${p.gen}ª desde Adán` : "No determinada";
+            document.getElementById("drawParents").textContent = [p.father, p.mother].filter(Boolean).join(" / ") || "—";
+            document.getElementById("drawPlace").textContent = p.birthPlace || "—";
+            document.getElementById("drawNotes").textContent = p.notes || "Sin notas biográficas adicionales.";
+            document.getElementById("drawRef").textContent = p.reference || "";
+            document.getElementById("drawLinkFicha").href = `visor_genealogia.html?name=${encodeURIComponent(p.name)}`;
+            document.getElementById("drawLinkTree").href = `arbol_genealogico.html?highlight=${encodeURIComponent(p.name)}`;
+
+            const avatar = document.getElementById("drawAvatar");
+            avatar.textContent = p.name.charAt(0);
+            avatar.style.background = avatarGradient(p.name);
+
+            document.getElementById("detailDrawer").classList.remove("collapsed");
+        }
+
+        function closeDrawer() {
+            document.getElementById("detailDrawer").classList.add("collapsed");
+            selectedPersonName = null;
+            document.querySelectorAll(".lifespan-group").forEach(g => g.classList.remove("selected"));
+        }
+
+        function focusAndSelectPerson(name) {
+            if (!people[name]) return;
+            if (!chartLayout.placedNodes[name] && detailMode !== "all") {
+                detailMode = "all";
+                document.querySelectorAll("#detailModeGroup .pill-btn").forEach(b => {
+                    b.classList.toggle("active", b.dataset.mode === "all");
+                });
+                renderAdamsChart();
+            }
+            const node = chartLayout.placedNodes[name];
+            if (node) {
+                const wrap = document.getElementById("chartScrollWrap");
+                wrap.scrollTo({
+                    left: Math.max(0, node.x1 - wrap.clientWidth * 0.35),
+                    top: Math.max(0, node.y - wrap.clientHeight * 0.4),
+                    behavior: "smooth"
+                });
+            }
+            selectPerson(name);
+            updateScannerYear(people[name].birth + 10, true);
+        }
+
+        /* ── Guided Presentation Mode (Tour del Pergamino) ───── */
+        let isPresenting = false;
+        let presIndex = 0;
+        let presAutoPlay = true;
+        let presTimer = null;
+        let presElapsed = 0;
+        const PRES_DURATION_MS = 8500;
+
+        function startPresentation(idx = 0) {
+            isPresenting = true;
+            presAutoPlay = true;
+            document.getElementById("presentationPanel").classList.add("active");
+            document.getElementById("btnPresPlay").textContent = "⏸ Pausar Auto";
+            document.getElementById("btnPresPlay").classList.add("active");
+            showPresentationStep(idx);
+            startPresTimer();
+        }
+
+        function stopPresentation() {
+            isPresenting = false;
+            clearInterval(presTimer);
+            presentationFeatured.clear();
+            document.getElementById("presentationPanel").classList.remove("active");
+            renderAdamsChart();
+        }
+
+        function showPresentationStep(idx) {
+            presIndex = (idx + PRESENTATION_CHAPTERS.length) % PRESENTATION_CHAPTERS.length;
+            presElapsed = 0;
+            const step = PRESENTATION_CHAPTERS[presIndex];
+
+            document.getElementById("presKicker").textContent = step.kicker;
+            document.getElementById("presTitle").textContent = step.title;
+            document.getElementById("presBody").textContent = step.body;
+            document.getElementById("presFact").textContent = step.fact;
+
+            // Update dots
+            const dotsBox = document.getElementById("presDots");
+            dotsBox.innerHTML = "";
+            PRESENTATION_CHAPTERS.forEach((_, i) => {
+                const dot = document.createElement("div");
+                dot.className = `pres-dot${i === presIndex ? " active" : ""}`;
+                dot.title = `Capítulo ${i + 1}`;
+                dot.onclick = () => { showPresentationStep(i); presElapsed = 0; };
+                dotsBox.appendChild(dot);
+            });
+
+            // Highlight featured characters
+            presentationFeatured = new Set(step.highlight || []);
+            if (Math.abs(zoomLevel - step.zoom) > 0.05) {
+                zoomLevel = step.zoom;
+                document.getElementById("zoomSlider").value = zoomLevel;
+            }
+            scannerYear = step.focusYear;
+            renderAdamsChart();
+
+            // Smooth pan scroll to chapter start year
+            const wrap = document.getElementById("chartScrollWrap");
+            const targetX = yearToX(step.scrollYear, chartLayout.totalW) - LEFT_LABEL_W - 20;
+            wrap.scrollTo({
+                left: Math.max(0, targetX),
+                top: 0,
+                behavior: "smooth"
+            });
+        }
+
+        function startPresTimer() {
+            clearInterval(presTimer);
+            const fill = document.getElementById("presProgressFill");
+            presTimer = setInterval(() => {
+                if (!isPresenting || !presAutoPlay) return;
+                presElapsed += 100;
+                fill.style.width = `${Math.min(100, (presElapsed / PRES_DURATION_MS) * 100)}%`;
+                if (presElapsed >= PRES_DURATION_MS) {
+                    showPresentationStep(presIndex + 1);
+                }
+            }, 100);
+        }
+
+        /* ── Export SVG to PNG ───────────────────────────────── */
+        function exportChartPNG() {
+            const svg = document.getElementById("adamsSvg");
+            const clone = svg.cloneNode(true);
+            const hdrClone = clone.querySelector("#streamHeaderColumn");
+            if (hdrClone) hdrClone.setAttribute("transform", "translate(0, 0)");
+            const styleEl = document.createElementNS("http://www.w3.org/2000/svg", "style");
+            styleEl.textContent = `
+                text { font-family: Inter, system-ui, sans-serif; }
+                .adams-title-tech { font-family: Inter, system-ui, sans-serif; font-weight: 800; }
+                .adams-mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
+            `;
+            clone.insertBefore(styleEl, clone.firstChild);
+            const computed = getComputedStyle(document.documentElement);
+
+            // Resolve CSS variables into concrete color values inside serialized SVG
+            let xml = new XMLSerializer().serializeToString(clone);
+            const vars = [
+                "--bg", "--surface", "--surface-raised", "--surface-inset",
+                "--border", "--border-subtle", "--text", "--muted", "--subtle",
+                "--m-dot", "--f-dot"
+            ];
+            vars.forEach(v => {
+                const val = computed.getPropertyValue(v).trim();
+                if (val) xml = xml.split(`var(${v})`).join(val);
+            });
+
+            const bgVal = computed.getPropertyValue("--bg").trim() || "#faf6f0";
+            const svgBlob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
+            const url = URL.createObjectURL(svgBlob);
+            const img = new Image();
+            img.onload = () => {
+                const scale = Math.min(2, Math.floor(14000 / chartLayout.totalW) || 1);
+                const canvas = document.createElement("canvas");
+                canvas.width = chartLayout.totalW * scale;
+                canvas.height = chartLayout.totalH * scale;
+                const ctx = canvas.getContext("2d");
+                ctx.fillStyle = bgVal;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.scale(scale, scale);
+                ctx.drawImage(img, 0, 0);
+                URL.revokeObjectURL(url);
+
+                const a = document.createElement("a");
+                a.download = `carta_adams_genealogia_${detailMode}.png`;
+                a.href = canvas.toDataURL("image/png");
+                a.click();
+            };
+            img.src = url;
+        }
+
+        /* ── UI Controls & Interaction Setup ─────────────────── */
+        function adjustZoom(delta) {
+            zoomLevel = Math.max(0.45, Math.min(2.4, +(zoomLevel + delta).toFixed(2)));
+            document.getElementById("zoomSlider").value = zoomLevel;
+            renderAdamsChart();
+        }
+
+        function setupDragAndInteractions() {
+            const wrap = document.getElementById("chartScrollWrap");
+            const svg = document.getElementById("adamsSvg");
+            let isDragging = false, startX = 0, startY = 0, scrollL = 0, scrollT = 0, moved = false;
+
+            wrap.addEventListener("mousedown", e => {
+                if (e.button !== 0) return;
+                isDragging = true;
+                moved = false;
+                startX = e.clientX;
+                startY = e.clientY;
+                scrollL = wrap.scrollLeft;
+                scrollT = wrap.scrollTop;
+                wrap.classList.add("grabbing");
+            });
+
+            window.addEventListener("mousemove", e => {
+                if (isDragging) {
+                    const dx = e.clientX - startX;
+                    const dy = e.clientY - startY;
+                    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+                    wrap.scrollLeft = scrollL - dx;
+                    wrap.scrollTop = scrollT - dy;
+                }
+            });
+
+            window.addEventListener("mouseup", () => {
+                isDragging = false;
+                wrap.classList.remove("grabbing");
+            });
+
+            // Hover & click scanner update
+            svg.addEventListener("mousemove", e => {
+                if (isDragging || isPresenting) return;
+                if (!document.getElementById("chkFollowMouse").checked) return;
+                const wrapRect = wrap.getBoundingClientRect();
+                if (e.clientX - wrapRect.left <= LEFT_LABEL_W) return;
+                const rect = svg.getBoundingClientRect();
+                const svgX = e.clientX - rect.left;
+                if (svgX > LEFT_LABEL_W) {
+                    const yr = xToYear(svgX, chartLayout.totalW);
+                    updateScannerYear(yr, true);
+                }
+            });
+
+            svg.addEventListener("click", e => {
+                if (moved) return;
+                const wrapRect = wrap.getBoundingClientRect();
+                if (e.clientX - wrapRect.left <= LEFT_LABEL_W) return;
+                const rect = svg.getBoundingClientRect();
+                const svgX = e.clientX - rect.left;
+                if (svgX > LEFT_LABEL_W) {
+                    const yr = xToYear(svgX, chartLayout.totalW);
+                    updateScannerYear(yr, true);
+                }
+            });
+
+            wrap.addEventListener("scroll", () => {
+                updateMinimapViewport();
+                const hdr = document.getElementById("streamHeaderColumn");
+                if (hdr) hdr.setAttribute("transform", `translate(${wrap.scrollLeft}, 0)`);
+            });
+
+            // Ctrl + Wheel Zoom
+            wrap.addEventListener("wheel", e => {
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    adjustZoom(e.deltaY < 0 ? 0.12 : -0.12);
+                }
+            }, { passive: false });
+
+            // Minimap click & drag
+            const mm = document.getElementById("minimapBar");
+            let mmDrag = false;
+            function jumpMinimap(clientX) {
+                const r = mm.getBoundingClientRect();
+                const pct = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+                wrap.scrollLeft = pct * chartLayout.totalW - wrap.clientWidth / 2;
+            }
+            mm.addEventListener("mousedown", e => { mmDrag = true; jumpMinimap(e.clientX); });
+            window.addEventListener("mousemove", e => { if (mmDrag) jumpMinimap(e.clientX); });
+            window.addEventListener("mouseup", () => { mmDrag = false; });
+
+            // Inline Search
+            const sInput = document.getElementById("chartSearchInput");
+            const sDrop = document.getElementById("chartSearchDrop");
+            sInput.addEventListener("input", () => {
+                const q = sInput.value.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                if (!q) { sDrop.style.display = "none"; return; }
+                const matches = Object.keys(people).filter(n =>
+                    n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(q)
+                ).sort().slice(0, 10);
+
+                if (matches.length === 0) {
+                    sDrop.innerHTML = `<div class="search-drop-item" style="color:var(--subtle);font-style:italic;">Sin coincidencias</div>`;
+                } else {
+                    sDrop.innerHTML = "";
+                    matches.forEach(name => {
+                        const p = people[name];
+                        const div = document.createElement("div");
+                        div.className = "search-drop-item";
+                        div.innerHTML = `<span style="font-weight:700;">${name}</span><span style="font-family:monospace;font-size:10px;color:var(--muted);">${formatYearBC(p.birth)}</span>`;
+                        div.onclick = () => {
+                            sDrop.style.display = "none";
+                            sInput.value = name;
+                            focusAndSelectPerson(name);
+                        };
+                        sDrop.appendChild(div);
+                    });
+                }
+                sDrop.style.display = "block";
+            });
+            document.addEventListener("click", e => {
+                if (!sInput.contains(e.target) && !sDrop.contains(e.target)) sDrop.style.display = "none";
+            });
+
+            // Keyboard Shortcuts for Presentation
+            document.addEventListener("keydown", e => {
+                if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+                if (isPresenting) {
+                    if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); showPresentationStep(presIndex + 1); }
+                    else if (e.key === "ArrowLeft") { e.preventDefault(); showPresentationStep(presIndex - 1); }
+                    else if (e.key === "Escape") stopPresentation();
+                } else if (e.key === "Escape") {
+                    closeDrawer();
+                }
+            });
+        }
+
+        function setupTheme() {
+            const toggle = document.getElementById('themeToggle');
+            const sun = document.getElementById('sunIcon'), moon = document.getElementById('moonIcon');
+            const apply = t => {
+                document.documentElement.setAttribute('data-theme', t);
+                sun.style.display = t === 'dark' ? 'block' : 'none';
+                moon.style.display = t === 'dark' ? 'none' : 'block';
+                if (Object.keys(people).length > 0) renderAdamsChart();
+            };
+            apply(localStorage.getItem('theme') || 'light');
+            toggle.addEventListener('click', () => {
+                const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+                localStorage.setItem('theme', next);
+                apply(next);
+            });
+        }
+
+        function setupMobileNav() {
+            const toggle = document.getElementById("menuToggle");
+            const nav = document.getElementById("navOverlay");
+            if (toggle && nav) {
+                toggle.addEventListener("click", () => nav.classList.toggle("open"));
+            }
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            setupTheme();
+            setupMobileNav();
+            setupDragAndInteractions();
+
+            // Controls Listeners
+            document.querySelectorAll("#detailModeGroup .pill-btn").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    document.querySelectorAll("#detailModeGroup .pill-btn").forEach(b => b.classList.remove("active"));
+                    btn.classList.add("active");
+                    detailMode = btn.dataset.mode;
+                    renderAdamsChart();
+                });
+            });
+
+            document.getElementById("btnToggleBranches").addEventListener("click", e => {
+                showBranches = !showBranches;
+                e.target.classList.toggle("active", showBranches);
+                e.target.textContent = showBranches ? "Ramas: ON" : "Ramas: OFF";
+                renderAdamsChart();
+            });
+
+            document.getElementById("zoomSlider").addEventListener("input", e => {
+                zoomLevel = parseFloat(e.target.value);
+                renderAdamsChart();
+            });
+
+            document.getElementById("btnExportPNG").addEventListener("click", exportChartPNG);
+
+            // Presentation Controls
+            document.getElementById("btnStartPresentation").addEventListener("click", () => startPresentation(0));
+            document.getElementById("btnClosePresentation").addEventListener("click", stopPresentation);
+            document.getElementById("btnPresPrev").addEventListener("click", () => showPresentationStep(presIndex - 1));
+            document.getElementById("btnPresNext").addEventListener("click", () => showPresentationStep(presIndex + 1));
+            document.getElementById("btnPresPlay").addEventListener("click", e => {
+                presAutoPlay = !presAutoPlay;
+                e.target.textContent = presAutoPlay ? "⏸ Pausar Auto" : "▶ Reanudar";
+                e.target.classList.toggle("active", presAutoPlay);
+            });
+            document.getElementById("btnFullscreen").addEventListener("click", () => {
+                if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+                else document.exitFullscreen().catch(() => {});
+            });
+
+            // Wait for GENEALOGIA_DATA
+            function initWhenReady() {
+                if (typeof GENEALOGIA_DATA !== 'undefined') {
+                    buildRelationshipMap();
+                    assignStreamsAndChronology();
+                    renderAdamsChart();
+
+                    const overlay = document.getElementById("loadingOverlay");
+                    overlay.classList.add("hidden");
+                    setTimeout(() => overlay.style.display = "none", 250);
+
+                    const params = new URLSearchParams(window.location.search);
+                    const nameParam = params.get("name");
+                    const modeParam = params.get("presentacion");
+
+                    if (nameParam && people[nameParam]) {
+                        focusAndSelectPerson(nameParam);
+                    } else if (modeParam === "1") {
+                        startPresentation(0);
+                    }
+
+                    // Register Service Worker for PWA
+                    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+                        navigator.serviceWorker.register('sw.js').catch(() => {});
+                    }
+                } else {
+                    setTimeout(initWhenReady, 50);
+                }
+            }
+            initWhenReady();
+        });
+    </script>
+</body>
+</html>

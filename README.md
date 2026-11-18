@@ -2,7 +2,7 @@
 
 Aplicación web interactiva, moderna y accesible para la exploración técnica y visual de las genealogías bíblicas (especialmente centrada en los primeros capítulos de **1 Crónicas** y sus conexiones con **Génesis** y los Evangelios).
 
-Cuenta con un sistema de diseño estético **Neo-Skeuo** (estilo libreta técnica, plano de ingeniería y papel milimetrado), arquitectura offline (PWA) y 6 esquemas interactivos de exploración.
+Cuenta con un sistema de diseño estético **Neo-Skeuo** (estilo libreta técnica, plano de ingeniería y papel milimetrado), arquitectura offline (PWA) y 7 esquemas interactivos de exploración.
 
 ---
 
@@ -43,8 +43,15 @@ Cuenta con un sistema de diseño estético **Neo-Skeuo** (estilo libreta técnic
    - Gráficos analíticos mediante **Chart.js** (distribución por género, ranking de personajes con mayor descendencia, densidad por linajes y volumen por generación).
    - Métricas clave (KPIs) en tiempo real sincronizadas con las ediciones locales.
 
-7. **Portal Principal y Búsqueda Global (`index.html`)**:
-   - Buscador universal instantáneo que indexa toda la base de datos y ofrece accesos directos a cualquiera de las 6 vistas.
+7. **Carta Sincronológica de Adams (`carta_adams.html`)**:
+   - Inspirada en la famosa *Adams' Synchronological Chart or Map of History* (1871).
+   - Seis ríos paralelos de linaje con doble regla cronológica (`Anno Mundi` y `a.C.`), barras de longevidad real y bifurcaciones padre-hijo.
+   - **Escáner de Contemporáneos**: cursor vertical interactivo para descubrir quiénes vivían simultáneamente en cualquier año exacto (por ejemplo, el solapamiento entre Sem y Abraham).
+   - **Modo Presentación Guiada**: recorrido narrado de 8 capítulos con desplazamiento panorámico automático, resaltado de protagonistas y soporte de pantalla completa.
+   - Exportación directa del mapa completo a PNG.
+
+8. **Portal Principal y Búsqueda Global (`index.html`)**:
+   - Buscador universal instantáneo que indexa toda la base de datos y ofrece accesos directos a cualquiera de las 7 vistas.
    - Indicador dinámico de personajes registrados y acceso rápido conmutador de tema Claro / Oscuro.
 
 ---
