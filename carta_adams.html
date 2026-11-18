@@ -49,8 +49,11 @@
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { height: 100%; overflow: hidden; }
+        html { height: 100%; overflow: hidden; }
         body {
+            height: 100%;
+            height: 100dvh;
+            overflow: hidden;
             font-family: 'Inter', system-ui, sans-serif;
             background: var(--bg);
             color: var(--text);
@@ -212,6 +215,7 @@
         /* ── Workspace ── */
         .workspace {
             flex: 1;
+            min-height: 0;
             display: flex;
             overflow: hidden;
             position: relative;
@@ -220,6 +224,8 @@
 
         .chart-stage {
             flex: 1;
+            min-width: 0;
+            min-height: 0;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -229,6 +235,7 @@
         /* Sticky Left Stream Legend + Scrollable Chart */
         .chart-scroll-wrap {
             flex: 1;
+            min-height: 0;
             overflow: auto;
             cursor: grab;
             position: relative;
@@ -239,12 +246,84 @@
 
         .chart-canvas-inner {
             position: relative;
-            display: inline-block;
+            display: flex;
+            align-items: flex-start;
+            width: max-content;
             min-height: 100%;
+        }
+
+        .stream-sticky-col {
+            position: sticky;
+            left: 0;
+            z-index: 25;
+            width: 180px;
+            min-width: 180px;
+            flex-shrink: 0;
+            background: var(--surface);
+            border-right: 2px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+        .stream-sticky-header {
+            height: 108px;
+            box-sizing: border-box;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            background: var(--surface);
+        }
+        .stream-sticky-title-main {
+            font-size: 12.5px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            color: var(--text);
+            text-transform: uppercase;
+        }
+        .stream-sticky-sub-main {
+            font-size: 9px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            color: var(--subtle);
+        }
+        .stream-sticky-item {
+            box-sizing: border-box;
+            padding: 10px 8px 10px 18px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            gap: 3px;
+        }
+        .stream-sticky-accent {
+            position: absolute;
+            left: 7px;
+            top: 10px;
+            bottom: 10px;
+            width: 5px;
+            border: 1px solid var(--border);
+        }
+        .stream-sticky-title {
+            font-size: 10.5px;
+            font-weight: 800;
+            color: var(--text);
+            line-height: 1.25;
+        }
+        .stream-sticky-sub {
+            font-size: 8.5px;
+            color: var(--muted);
+            line-height: 1.3;
+        }
+        .stream-sticky-footer {
+            height: 38px;
+            box-sizing: border-box;
+            background: var(--surface);
         }
 
         svg.adams-svg {
             display: block;
+            flex-shrink: 0;
         }
 
         /* SVG Typography & Interactive Elements */
@@ -364,10 +443,12 @@
         /* ── Presentation Tour Overlay Card ── */
         .presentation-panel {
             position: absolute;
-            top: 16px;
+            top: 12px;
             left: 50%;
             transform: translateX(-50%);
             width: min(680px, 94vw);
+            max-height: calc(100% - 24px);
+            overflow-y: auto;
             background: var(--surface);
             border: 2px solid var(--border);
             box-shadow: 4px 4px 0px var(--border);
@@ -425,43 +506,91 @@
         }
 
         /* ── Detail Drawer ── */
+        .drawer-backdrop {
+            display: none;
+            position: fixed;
+            inset: 52px 0 0 0;
+            background: rgba(26, 25, 23, 0.35);
+            z-index: 105;
+        }
+        .drawer-backdrop.open { display: none; }
+
         .detail-drawer {
-            width: 320px;
+            width: 340px;
+            height: 100%;
+            max-height: 100%;
+            min-height: 0;
             background: var(--surface);
             border-left: 2px solid var(--border);
             display: flex;
             flex-direction: column;
-            overflow-y: auto;
-            transition: width 0.2s, transform 0.2s;
+            overflow: hidden;
             z-index: 35;
             flex-shrink: 0;
         }
-        .detail-drawer.collapsed { width: 0; border-left: none; overflow: hidden; }
+        .detail-drawer.collapsed { display: none; }
         .drawer-header {
-            padding: 14px 16px; border-bottom: 2px solid var(--border);
-            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 16px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             background: var(--surface-raised);
+            flex-shrink: 0;
+            z-index: 5;
         }
-        .drawer-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+        .drawer-body {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
         .avatar-block {
-            width: 72px; height: 72px; border: 2px solid var(--border);
+            width: 64px; height: 64px; border: 2px solid var(--border);
             box-shadow: 2px 2px 0px var(--border);
             display: flex; align-items: center; justify-content: center;
-            font-size: 28px; font-weight: 800; color: #fff; align-self: center;
+            font-size: 26px; font-weight: 800; color: #fff; align-self: center;
+            flex-shrink: 0;
         }
         .meta-card {
             background: var(--surface-raised); border: 1px solid var(--border);
             box-shadow: 2px 2px 0px var(--border);
-            overflow: hidden; font-size: 12px;
+            overflow: hidden; font-size: 11.5px;
+            flex-shrink: 0;
         }
         .meta-row {
-            display: flex; justify-content: space-between; gap: 8px;
+            display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
             padding: 6px 10px;
             border-bottom: 1px dashed var(--border-subtle);
         }
         .meta-row:last-child { border-bottom: none; }
-        .meta-key { color: var(--subtle); font-weight: 700; font-size: 9.5px; text-transform: uppercase; }
-        .meta-val { color: var(--text); font-weight: 600; text-align: right; }
+        .meta-key { color: var(--subtle); font-weight: 700; font-size: 9.5px; text-transform: uppercase; flex-shrink: 0; }
+        .meta-val { color: var(--text); font-weight: 600; text-align: right; word-break: break-word; overflow-wrap: anywhere; }
+
+        .drawer-section {
+            border-top: 1px dashed var(--border-subtle);
+            padding-top: 10px;
+            flex-shrink: 0;
+        }
+        .drawer-section-label {
+            font-size: 10px; font-weight: 700; color: var(--subtle);
+            text-transform: uppercase; display: block; margin-bottom: 6px;
+            letter-spacing: 0.4px;
+        }
+        .drawer-chip-list {
+            display: flex; flex-wrap: wrap; gap: 5px;
+        }
+        .drawer-chip {
+            padding: 3px 7px; font-size: 10.5px; font-weight: 600;
+            background: var(--surface-raised); border: 1px solid var(--border);
+            color: var(--text); cursor: pointer; font-family: inherit;
+            box-shadow: 1px 1px 0px var(--border);
+        }
+        .drawer-chip:hover { background: var(--surface-inset); }
 
         /* Tooltip */
         .adams-tooltip {
@@ -479,6 +608,19 @@
         }
 
         /* Responsive */
+        @media (max-width: 1024px) {
+            .drawer-backdrop.open { display: block; }
+            .detail-drawer {
+                position: fixed;
+                right: 0; top: 52px; bottom: 0;
+                width: min(380px, 100vw);
+                height: calc(100dvh - 52px);
+                max-height: calc(100dvh - 52px);
+                z-index: 120;
+                box-shadow: -4px 0 16px rgba(0,0,0,0.28);
+            }
+            .detail-drawer.collapsed { display: none; }
+        }
         @media (max-width: 900px) {
             .topbar-mono-label { display: none; }
             .topbar { gap: 6px; padding: 0 12px; }
@@ -491,16 +633,14 @@
             .nav-overlay.open { display: flex; }
             .zoom-wrap { margin-left: 0; }
             .search-inline { width: 150px; }
-            .detail-drawer {
-                position: fixed;
-                right: 0; top: 52px; bottom: 0;
-                width: 100%; max-width: 380px;
-                z-index: 100;
-                box-shadow: -4px 0 16px rgba(0,0,0,0.25);
-            }
-            .detail-drawer.collapsed { width: 0; }
             .presentation-panel { top: 8px; padding: 12px 14px; }
-            .pres-title { font-size: 17px; }
+            .pres-title { font-size: 16px; }
+        }
+        @media (max-width: 600px) {
+            .stream-sticky-col { width: 128px; min-width: 128px; }
+            .stream-sticky-item { padding: 8px 6px 8px 15px; }
+            .stream-sticky-title { font-size: 9.5px; }
+            .stream-sticky-sub { font-size: 8px; }
         }
     </style>
 </head>
@@ -561,8 +701,8 @@
         </button>
 
         <div class="pill-group" id="detailModeGroup">
-            <button class="pill-btn active" data-mode="key">Vista Clásica (Patriarcas y Reyes)</button>
-            <button class="pill-btn" data-mode="all">Dataset Completo (690+)</button>
+            <button class="pill-btn active" data-mode="key">Vista Clásica (Patriarcas, Reyes y Profetas)</button>
+            <button class="pill-btn" data-mode="all" id="btnModeAll">Dataset Completo (760+)</button>
         </div>
 
         <button class="pill-btn active" id="btnToggleBranches" title="Mostrar u ocultar líneas de bifurcación entre padres e hijos">
@@ -591,7 +731,7 @@
             <!-- Guided Presentation Floating Card -->
             <div class="presentation-panel" id="presentationPanel" role="dialog" aria-label="Presentación guiada de la Carta de Adams">
                 <div class="pres-top">
-                    <span class="pres-kicker" id="presKicker">CAPÍTULO 1 DE 8 · 4004 a.C.</span>
+                    <span class="pres-kicker" id="presKicker">CAPÍTULO 1 DE 10 · 4004 a.C.</span>
                     <div style="display:flex; gap:6px; align-items:center;">
                         <button class="pill-btn" id="btnFullscreen" title="Pantalla completa">⛶</button>
                         <button class="pill-btn" id="btnClosePresentation">✕ Salir</button>
@@ -614,6 +754,7 @@
             <!-- Scrollable Chart Viewport -->
             <div class="chart-scroll-wrap" id="chartScrollWrap">
                 <div class="chart-canvas-inner" id="chartCanvasInner">
+                    <div class="stream-sticky-col" id="streamStickyCol"></div>
                     <svg class="adams-svg" id="adamsSvg"></svg>
                 </div>
             </div>
@@ -634,23 +775,26 @@
                     </div>
                 </div>
                 <div class="scanner-list" id="scannerList"></div>
-                <div class="minimap-bar" id="minimapBar" title="Haz clic o arrastra en el minimapa para desplazarte por los 3.600 años">
+                <div class="minimap-bar" id="minimapBar" title="Haz clic o arrastra en el minimapa para desplazarte por los 4.100 años">
                     <div class="minimap-eras" id="minimapEras"></div>
                     <div class="minimap-viewport" id="minimapViewport"></div>
                 </div>
             </div>
         </div>
 
+        <!-- Backdrop for Mobile Drawer -->
+        <div class="drawer-backdrop" id="drawerBackdrop" onclick="closeDrawer()"></div>
+
         <!-- Detail Drawer -->
-        <aside class="detail-drawer collapsed" id="detailDrawer">
+        <aside class="detail-drawer collapsed" id="detailDrawer" aria-label="Ficha sincronológica del personaje">
             <div class="drawer-header">
                 <span style="font-weight:700; text-transform:uppercase; font-size:11px;">Ficha Sincronológica</span>
-                <button class="topbar-btn" onclick="closeDrawer()" style="padding:2px 8px; font-size:11px;">Cerrar</button>
+                <button class="topbar-btn" onclick="closeDrawer()" aria-label="Cerrar ficha" style="padding:3px 10px; font-size:11px;">✕ Cerrar</button>
             </div>
             <div class="drawer-body">
                 <div class="avatar-block" id="drawAvatar">?</div>
                 <div style="text-align:center;">
-                    <h3 id="drawName" style="font-size:19px; font-weight:800; text-transform:uppercase;"></h3>
+                    <h3 id="drawName" style="font-size:18px; font-weight:800; text-transform:uppercase;"></h3>
                     <p id="drawMeaning" style="font-size:11.5px; font-style:italic; color:var(--muted); margin-top:2px;"></p>
                 </div>
 
@@ -662,18 +806,35 @@
                     <div class="meta-row"><span class="meta-key">Generación</span><span class="meta-val" id="drawGen">—</span></div>
                     <div class="meta-row"><span class="meta-key">Padre / Madre</span><span class="meta-val" id="drawParents">—</span></div>
                     <div class="meta-row"><span class="meta-key">Origen</span><span class="meta-val" id="drawPlace">—</span></div>
+                    <div class="meta-row" id="drawBadgeRow" style="display:none;"><span class="meta-key">Hito Adams</span><span class="meta-val" id="drawBadge">—</span></div>
                 </div>
 
-                <div style="border-top:1px dashed var(--border-subtle); padding-top:10px;">
-                    <span style="font-size:10px; font-weight:700; color:var(--subtle); text-transform:uppercase; display:block; margin-bottom:5px;">Reseña y Referencia</span>
-                    <p id="drawNotes" style="font-size:12px; color:var(--muted); line-height:1.55;"></p>
-                    <p id="drawRef" style="font-size:11px; color:var(--subtle); margin-top:6px; font-family:monospace;"></p>
+                <div class="drawer-section" id="drawWorldSection">
+                    <span class="drawer-section-label">Sincronía Histórica Mundial</span>
+                    <p id="drawWorldContext" style="font-size:11.5px; color:var(--text); line-height:1.5; background:var(--surface-raised); border:1px solid var(--border); padding:7px 9px;"></p>
                 </div>
 
-                <div style="display:flex; gap:6px; margin-top:6px;">
+                <div class="drawer-section" id="drawChildrenSection" style="display:none;">
+                    <span class="drawer-section-label">Hijos Registrados</span>
+                    <div class="drawer-chip-list" id="drawChildren"></div>
+                </div>
+
+                <div class="drawer-section" id="drawContempSection" style="display:none;">
+                    <span class="drawer-section-label">Contemporáneos Destacados</span>
+                    <div class="drawer-chip-list" id="drawContemporaries"></div>
+                </div>
+
+                <div class="drawer-section">
+                    <span class="drawer-section-label">Reseña y Referencia</span>
+                    <p id="drawNotes" style="font-size:12px; color:var(--muted); line-height:1.55; word-break:break-word;"></p>
+                    <p id="drawRef" style="font-size:10.5px; color:var(--subtle); margin-top:6px; font-family:monospace; word-break:break-word;"></p>
+                </div>
+
+                <div id="drawActionsRow" style="display:flex; gap:6px; margin-top:4px; padding-bottom:8px;">
                     <a id="drawLinkFicha" href="#" class="topbar-btn" style="flex:1; justify-content:center;">Ver Ficha →</a>
                     <a id="drawLinkTree" href="#" class="topbar-btn" style="flex:1; justify-content:center;">Ver Árbol →</a>
                 </div>
+                <p id="drawSupplementalNote" style="display:none; font-size:10.5px; color:var(--subtle); font-family:monospace; padding:7px 9px; border:1px dashed var(--border-subtle); background:var(--surface-raised); line-height:1.45;"></p>
             </div>
         </aside>
     </div>
@@ -692,16 +853,18 @@
         let presentationFeatured = new Set();
 
         const MIN_YEAR = -4050;
-        const MAX_YEAR = -420;
+        const MAX_YEAR = 110;
         const CREATION_YEAR = -4004; // 0 AM = 4004 a.C. (Ussher / Adams' Chart)
 
         const STREAMS = [
-            { id: 0, title: "I. Linaje Mesiánico y Real", sub: "Adán, Set, Noé, Sem, Abraham, David", bg: "var(--surface)", bar: "var(--surface-inset)", ink: "var(--text)" },
+            { id: 0, title: "I. Linaje Mesiánico y Real", sub: "Adán, Abraham, David, Zorobabel, Cristo", bg: "var(--surface)", bar: "var(--surface-inset)", ink: "var(--text)" },
             { id: 1, title: "II. Pueblos de Jafet", sub: "Gomer, Magog, Javán, Asia Menor", bg: "var(--bg)", bar: "var(--surface-raised)", ink: "var(--text)" },
             { id: 2, title: "III. Pueblos de Cam", sub: "Cus, Nimrod, Egipto, Canaán", bg: "var(--surface)", bar: "var(--surface-raised)", ink: "var(--text)" },
             { id: 3, title: "IV. Sem Colateral y Edom", sub: "Elam, Asur, Ismael, Cetura, Esaú", bg: "var(--bg)", bar: "var(--surface-raised)", ink: "var(--text)" },
-            { id: 4, title: "V. Sacerdocio y Levitas", sub: "Leví, Moisés, Aarón, Sadoc, Josadac", bg: "var(--surface)", bar: "var(--surface-raised)", ink: "var(--text)" },
-            { id: 5, title: "VI. Tribus y Casa de Saúl", sub: "Rubén, José, Efraín, Benjamín, Saúl", bg: "var(--bg)", bar: "var(--surface-raised)", ink: "var(--text)" }
+            { id: 4, title: "V. Sacerdocio y Levitas", sub: "Leví, Aarón, Sadoc, Esdras, Macabeos", bg: "var(--surface)", bar: "var(--surface-raised)", ink: "var(--text)" },
+            { id: 5, title: "VI. Tribus, Jueces y Saúl", sub: "Otoniel, Débora, Gedeón, Sansón, Saúl", bg: "var(--bg)", bar: "var(--surface-raised)", ink: "var(--text)" },
+            { id: 6, title: "VII. Reino del Norte (Israel)", sub: "Jeroboam I, Omri, Acab, Jehú, Oseas", bg: "var(--surface)", bar: "var(--surface-raised)", ink: "var(--text)" },
+            { id: 7, title: "VIII. Profetas y Apóstoles", sub: "Elías, Isaías, Jeremías, Daniel, NT", bg: "var(--bg)", bar: "var(--surface-raised)", ink: "var(--text)" }
         ];
 
         const ERAS = [
@@ -711,119 +874,230 @@
             { name: "Egipto y Éxodo", start: -1706, end: -1451 },
             { name: "Jueces", start: -1451, end: -1095 },
             { name: "Monarquía Unida", start: -1095, end: -975 },
-            { name: "Reino Dividido y Exilio", start: -975, end: -450 }
+            { name: "Reino Dividido y Exilio", start: -975, end: -538 },
+            { name: "Persa y Griego", start: -538, end: -167 },
+            { name: "Macabeos y Roma (NT)", start: -167, end: 100 }
+        ];
+
+        // Sincronía histórica universal de la Carta de Adams
+        const WORLD_SYNCHRONY = [
+            { label: "Civilización Antediluviana (Gén. 4–5: agricultura, metalurgia y música)", start: -4004, end: -2348 },
+            { label: "Sumeria, Babel (Nimrod) y Reino Antiguo de Egipto (Pirámides)", start: -2348, end: -1950 },
+            { label: "Imperio Babilónico antiguo (Hammurabi) y Egipto Medio / Hicsos", start: -1950, end: -1550 },
+            { label: "Imperio Nuevo de Egipto (XVIII Din.) · Canaán", start: -1550, end: -1200 },
+            { label: "Fenicia (Tiro) · Asiria temprana · Pueblos del Mar", start: -1200, end: -880 },
+            { label: "Grecia Arcaica · Expansión Asiria (Salmanasar III)", start: -880, end: -780 },
+            { label: "Olimpíadas (776 a.C.) · Fundación de Roma (753 a.C.)", start: -780, end: -745 },
+            { label: "Imperio Neoasirio (Tiglat-Pileser) y Babilonia (Nabucodonosor)", start: -745, end: -539 },
+            { label: "Imperio Medo-Persa (Ciro el Grande · Esdras y Nehemías)", start: -539, end: -331 },
+            { label: "Imperio Griego (Alejandro Magno · Ptolomeos y Seléucidas)", start: -331, end: -167 },
+            { label: "Macabeos / Dinastía Asmonea y República Romana Tardía", start: -167, end: -27 },
+            { label: "Imperio Romano (Augusto · Siglo I · Jerusalén 70 d.C.)", start: -27, end: 100 }
         ];
 
         const MILESTONES = [
-            { year: -4004, label: "Creación de Adán (0 AM)" },
+            { year: -4004, label: "Creación (0 AM)" },
             { year: -3017, label: "Enoc arrebatado" },
-            { year: -2348, label: "El Diluvio Universal (1656 AM)", isFlood: true },
-            { year: -2242, label: "Torre de Babel / Peleg" },
-            { year: -1921, label: "Llamado de Abraham" },
-            { year: -1706, label: "Jacob desciende a Egipto" },
-            { year: -1491, label: "Éxodo y Ley en Sinaí" },
-            { year: -1012, label: "Templo de Salomón" },
-            { year: -586,  label: "Exilio en Babilonia", isExile: true }
+            { year: -2348, label: "Diluvio Universal (1656 AM)", isFlood: true },
+            { year: -2242, label: "Babel / Peleg" },
+            { year: -1921, label: "Llamado Abraham" },
+            { year: -1706, label: "Jacob a Egipto" },
+            { year: -1491, label: "Éxodo / Sinaí" },
+            { year: -1012, label: "Templo Salomón" },
+            { year: -753,  label: "Roma (753 a.C.)" },
+            { year: -586,  label: "Exilio Babilonia", isExile: true },
+            { year: -538,  label: "Edicto de Ciro" },
+            { year: -332,  label: "Alejandro Magno" },
+            { year: -164,  label: "Macabeos" },
+            { year: -4,    label: "Nacimiento Jesús" },
+            { year: 30,    label: "Crucifixión (~30 d.C.)" },
+            { year: 70,    label: "Jerusalén (70 d.C.)", isExile: true }
         ];
 
         // Exact biblical/Ussher lifespans used in Adams' Synchronological Chart
         const PATRIARCH_CHRONOLOGY = {
-            "Adam":       { birth: -4004, death: -3074, exact: true, badge: "930 años · 1er Hombre" },
-            "Eva":        { birth: -4004, death: -3074, exact: false, badge: "Madre de todos" },
-            "Set":        { birth: -3874, death: -2962, exact: true, badge: "912 años" },
-            "Enós":       { birth: -3769, death: -2864, exact: true, badge: "905 años" },
-            "Cainán":     { birth: -3679, death: -2769, exact: true, badge: "910 años" },
-            "Mahalaleel": { birth: -3609, death: -2714, exact: true, badge: "895 años" },
-            "Jared":      { birth: -3544, death: -2582, exact: true, badge: "962 años" },
-            "Enoc":       { birth: -3382, death: -3017, exact: true, badge: "★ Arrebatado (365a)" },
-            "Matusalén":  { birth: -3317, death: -2348, exact: true, badge: "969 años · Récord" },
-            "Lamec":      { birth: -3130, death: -2353, exact: true, badge: "777 años" },
-            "Noé":        { birth: -2948, death: -1998, exact: true, badge: "950 años · Arca" },
-            "Jafet":      { birth: -2450, death: -1900, exact: false },
-            "Cam":        { birth: -2448, death: -1905, exact: false },
-            "Sem":        { birth: -2446, death: -1846, exact: true, badge: "600 años" },
+            "Adam":       { birth: -4004, death: -3074, exact: true, badge: "930 años · Padre de Set a los 130a" },
+            "Eva":        { birth: -4004, death: -3074, exact: false, badge: "Madre de todos los vivientes" },
+            "Set":        { birth: -3874, death: -2962, exact: true, badge: "912 años · Padre de Enós a los 105a" },
+            "Enós":       { birth: -3769, death: -2864, exact: true, badge: "905 años · Padre de Cainán a los 90a" },
+            "Cainán":     { birth: -3679, death: -2769, exact: true, badge: "910 años · Padre de Mahalaleel a los 70a" },
+            "Mahalaleel": { birth: -3609, death: -2714, exact: true, badge: "895 años · Padre de Jared a los 65a" },
+            "Jared":      { birth: -3544, death: -2582, exact: true, badge: "962 años · Padre de Enoc a los 162a" },
+            "Enoc":       { birth: -3382, death: -3017, exact: true, badge: "Arrebatado a los 365 años (3017 a.C.)" },
+            "Matusalén":  { birth: -3317, death: -2348, exact: true, badge: "969 años · Murió el año del Diluvio" },
+            "Lamec":      { birth: -3130, death: -2353, exact: true, badge: "777 años · Padre de Noé a los 182a" },
+            "Noé":        { birth: -2948, death: -1998, exact: true, badge: "950 años · Diluvio a los 600a (Arca)" },
+            "Jafet":      { birth: -2450, death: -1900, exact: false, badge: "Progenitor pueblos del norte y Europa" },
+            "Cam":        { birth: -2448, death: -1905, exact: false, badge: "Progenitor Cus, Mizraim, Fut, Canaán" },
+            "Sem":        { birth: -2446, death: -1846, exact: true, badge: "600 años · Convivió con Abraham e Isaac" },
             "Gomer":      { birth: -2340, death: -1930, exact: false },
             "Magog":      { birth: -2338, death: -1925, exact: false },
             "Madai":      { birth: -2336, death: -1920, exact: false },
             "Javán":      { birth: -2334, death: -1915, exact: false },
             "Cus":        { birth: -2342, death: -1940, exact: false },
-            "Mizraim":    { birth: -2340, death: -1935, exact: false },
+            "Mizraim":    { birth: -2340, death: -1935, exact: false, badge: "Egipto antiguo" },
             "Fut":        { birth: -2338, death: -1930, exact: false },
             "Canaán":     { birth: -2335, death: -1925, exact: false },
-            "Nimrod":     { birth: -2290, death: -2010, exact: false, badge: "Babel / Nínive" },
+            "Nimrod":     { birth: -2290, death: -2010, exact: false, badge: "Fundador de Babel y Nínive" },
             "Elam":       { birth: -2344, death: -1940, exact: false },
             "Asur":       { birth: -2342, death: -1935, exact: false },
-            "Arfaxad":    { birth: -2346, death: -1908, exact: true, badge: "438 años" },
+            "Arfaxad":    { birth: -2346, death: -1908, exact: true, badge: "438 años · Nacido 2a tras el Diluvio" },
             "Cainán (hijo de Arfaxad)": { birth: -2328, death: -1900, exact: false },
-            "Sala":       { birth: -2311, death: -1878, exact: true, badge: "433 años" },
-            "Heber":      { birth: -2281, death: -1817, exact: true, badge: "464 años" },
-            "Peleg":      { birth: -2247, death: -2008, exact: true, badge: "239a · División" },
+            "Sala":       { birth: -2311, death: -1878, exact: true, badge: "433 años · Padre de Heber a los 30a" },
+            "Heber":      { birth: -2281, death: -1817, exact: true, badge: "464 años · Padre epónimo de los hebreos" },
+            "Peleg":      { birth: -2247, death: -2008, exact: true, badge: "239 años · En sus días fue repartida la tierra" },
             "Reu":        { birth: -2217, death: -1978, exact: true, badge: "239 años" },
             "Serug":      { birth: -2185, death: -1955, exact: true, badge: "230 años" },
             "Nacor":      { birth: -2155, death: -2007, exact: true, badge: "148 años" },
-            "Taré":       { birth: -2126, death: -1921, exact: true, badge: "205 años" },
-            "Abraham":    { birth: -1996, death: -1821, exact: true, badge: "175 años · Pacto" },
-            "Ismael":     { birth: -1910, death: -1773, exact: true, badge: "137 años" },
-            "Isaac":      { birth: -1896, death: -1716, exact: true, badge: "180 años" },
-            "Esaú":       { birth: -1836, death: -1700, exact: false },
-            "Israel":     { birth: -1836, death: -1689, exact: true, badge: "147a · 12 Tribus" },
+            "Taré":       { birth: -2126, death: -1921, exact: true, badge: "205 años · Salió de Ur hacia Harán" },
+            "Abraham":    { birth: -1996, death: -1821, exact: true, badge: "175 años · Pacto a los 75a (1921 a.C.)" },
+            "Ismael":     { birth: -1910, death: -1773, exact: true, badge: "137 años · Progenitor de 12 príncipes" },
+            "Isaac":      { birth: -1896, death: -1716, exact: true, badge: "180 años · Hijo de la promesa" },
+            "Esaú":       { birth: -1836, death: -1700, exact: false, badge: "Edom / Monte Seir" },
+            "Israel":     { birth: -1836, death: -1689, exact: true, badge: "147 años · Padre de las 12 Tribus" },
             "Rubén":      { birth: -1758, death: -1635, exact: false },
             "Simeón":     { birth: -1757, death: -1630, exact: false },
-            "Leví":       { birth: -1755, death: -1618, exact: true, badge: "137 años" },
-            "Judá":       { birth: -1754, death: -1626, exact: false },
+            "Leví":       { birth: -1755, death: -1618, exact: true, badge: "137 años · Tribu sacerdotal" },
+            "Judá":       { birth: -1754, death: -1626, exact: false, badge: "Línea real mesiánica" },
             "Isacar":     { birth: -1750, death: -1625, exact: false },
             "Zabulón":    { birth: -1748, death: -1622, exact: false },
             "Dan":        { birth: -1753, death: -1630, exact: false },
             "Neftalí":    { birth: -1751, death: -1628, exact: false },
             "Gad":        { birth: -1752, death: -1628, exact: false },
             "Aser":       { birth: -1749, death: -1625, exact: false },
-            "José":       { birth: -1745, death: -1635, exact: true, badge: "110a · Egipto" },
+            "José":       { birth: -1745, death: -1635, exact: true, badge: "110 años · Gobernador en Egipto" },
             "Benjamín":   { birth: -1732, death: -1612, exact: false },
             "Efraín":     { birth: -1712, death: -1600, exact: false },
             "Manasés":    { birth: -1714, death: -1602, exact: false },
             "Fares":      { birth: -1715, death: -1590, exact: false },
             "Hezrón":     { birth: -1690, death: -1565, exact: false },
             "Ram":        { birth: -1620, death: -1505, exact: false },
+            "Hur":        { birth: -1565, death: -1475, exact: false, badge: "Sostuvo manos de Moisés" },
+            "Caleb":      { birth: -1530, death: -1410, exact: false, badge: "Conquistó Hebrón (1 Cr 2 / 4)" },
+            "Bezaleel":   { birth: -1530, death: -1445, exact: false, badge: "Artífice del Tabernáculo (1 Cr 2:20)" },
             "Aminadab":   { birth: -1560, death: -1450, exact: false },
-            "Naasón":     { birth: -1515, death: -1415, exact: false },
+            "Naasón":     { birth: -1515, death: -1415, exact: false, badge: "Príncipe de Judá en el Sinaí" },
             "Salmón":     { birth: -1465, death: -1360, exact: false },
+            "Otoniel":    { birth: -1420, death: -1335, exact: false, stream: 5, badge: "1er Juez de Israel (1 Cr 4:13; Jue 3)" },
             "Boaz":       { birth: -1310, death: -1210, exact: false },
             "Obed":       { birth: -1220, death: -1125, exact: false },
             "Isaí":       { birth: -1155, death: -1060, exact: false },
             "Coat":       { birth: -1725, death: -1592, exact: true, badge: "133 años" },
             "Amram":      { birth: -1645, death: -1508, exact: true, badge: "137 años" },
-            "Aarón":      { birth: -1574, death: -1451, exact: true, badge: "123a · Sumo Sac." },
-            "Moisés":     { birth: -1571, death: -1451, exact: true, badge: "120a · Éxodo" },
+            "Aarón":      { birth: -1574, death: -1451, exact: true, badge: "123 años · Primer Sumo Sacerdote" },
+            "Moisés":     { birth: -1571, death: -1451, exact: true, badge: "120 años · Éxodo (1491 a.C.) y Ley" },
             "Miriam":     { birth: -1580, death: -1452, exact: false },
-            "Josué":      { birth: -1535, death: -1425, exact: true, badge: "110 años" },
-            "Samuel":     { birth: -1155, death: -1060, exact: false, badge: "Profeta y Juez" },
-            "Saúl":       { birth: -1120, death: -1055, exact: false, badge: "1er Rey Israel" },
+            "Eleazar":    { birth: -1545, death: -1425, exact: false, badge: "Sumo Sacerdote tras Aarón" },
+            "Finees":     { birth: -1500, death: -1390, exact: false, badge: "Pacto de sacerdocio perpetuo" },
+            "Josué":      { birth: -1535, death: -1425, exact: true, badge: "110 años · Conquista de Canaán" },
+            "Samuel":     { birth: -1155, death: -1060, exact: false, stream: 5, badge: "Último Juez y Profeta" },
+            "Saúl":       { birth: -1120, death: -1055, exact: false, badge: "Primer Rey de Israel (Benjamín)" },
             "Jonatán":    { birth: -1095, death: -1055, exact: false },
-            "David":      { birth: -1085, death: -1015, exact: true, badge: "70a · Rey de Israel" },
-            "Salomón":    { birth: -1033, death: -975,  exact: true, badge: "Templo Jerusalén" },
-            "Roboam":     { birth: -1016, death: -958,  exact: true, badge: "58 años" },
+            "David":      { birth: -1085, death: -1015, exact: true, badge: "70 años · Reinó 40a en Hebrón/Jerusalén" },
+            "Sadoc":      { birth: -1050, death: -970,  exact: false, badge: "Sumo Sacerdote en Jerusalén" },
+            "Asaf":       { birth: -1048, death: -975,  exact: false, badge: "Músico principal del Templo" },
+            "Hemán":      { birth: -1045, death: -975,  exact: false, badge: "Cantor coatita de David" },
+            "Etán":       { birth: -1042, death: -972,  exact: false, badge: "Cantor merarita de David" },
+            "Absalón":    { birth: -1052, death: -1022, exact: false },
+            "Natán":      { birth: -1036, death: -965,  exact: false },
+            "Salomón":    { birth: -1033, death: -975,  exact: true, badge: "Edificó el Primer Templo (1012 a.C.)" },
+            "Roboam":     { birth: -1016, death: -958,  exact: true, badge: "58 años · División del Reino (975 a.C.)" },
             "Abías":      { birth: -980,  death: -955,  exact: false },
-            "Asa":        { birth: -975,  death: -914,  exact: false },
+            "Asa":        { birth: -975,  death: -914,  exact: false, badge: "Reforma espiritual en Judá" },
             "Josafat":    { birth: -949,  death: -889,  exact: true, badge: "60 años" },
             "Joram":      { birth: -921,  death: -885,  exact: true, badge: "36 años" },
             "Ocozías":    { birth: -907,  death: -884,  exact: true, badge: "23 años" },
             "Joás":       { birth: -885,  death: -839,  exact: true, badge: "46 años" },
             "Amasías":    { birth: -864,  death: -810,  exact: true, badge: "54 años" },
-            "Azarías":    { birth: -826,  death: -758,  exact: true, badge: "68a · Uzías" },
-            "Jotam":      { birth: -783,  death: -742,  exact: true, badge: "41 años" },
+            "Azarías":    { birth: -826,  death: -758,  exact: true, badge: "68 años · Rey Uzías" },
+            "Jotam":      { birth: -783,  death: -742,  exact: true, badge: "41 años · Contemporáneo de Isaías" },
             "Acaz":       { birth: -762,  death: -726,  exact: true, badge: "36 años" },
-            "Ezequías":   { birth: -751,  death: -698,  exact: true, badge: "53 años · Reforma" },
-            "Manasés":    { birth: -710,  death: -643,  exact: true, badge: "67 años" },
+            "Ezequías":   { birth: -751,  death: -698,  exact: true, badge: "53 años · Gran reforma y sitio de Asiria" },
+            "Manasés":    { birth: -710,  death: -643,  exact: true, badge: "67 años · Reinado más largo (55a)" },
             "Amón":       { birth: -665,  death: -641,  exact: true, badge: "24 años" },
-            "Josías":     { birth: -649,  death: -609,  exact: true, badge: "40 años" },
+            "Josías":     { birth: -649,  death: -609,  exact: true, badge: "40 años · Hallazgo del Libro de la Ley" },
             "Joacim":     { birth: -634,  death: -598,  exact: true, badge: "36 años" },
-            "Sedequías":  { birth: -619,  death: -586,  exact: false, badge: "Último Rey" },
-            "Jeconías":   { birth: -616,  death: -560,  exact: false },
+            "Seraías":    { birth: -640,  death: -586,  exact: false, badge: "Sumo Sacerdote en la caída de Jerusalén" },
+            "Sedequías":  { birth: -619,  death: -586,  exact: false, badge: "Último rey antes del destierro" },
+            "Jeconías":   { birth: -616,  death: -560,  exact: false, badge: "Llevado cautivo a Babilonia" },
             "Salatiel":   { birth: -595,  death: -530,  exact: false },
             "Pedaías":    { birth: -588,  death: -525,  exact: false },
-            "Zorobabel":  { birth: -565,  death: -495,  exact: false, badge: "Retorno del Exilio" },
-            "Josadac":    { birth: -620,  death: -555,  exact: false }
+            "Zorobabel":  { birth: -565,  death: -495,  exact: false, badge: "Líder del retorno y reconstrucción (536 a.C.)" },
+            "Josadac":    { birth: -620,  death: -555,  exact: false, badge: "Deportado en el exilio (1 Cr 6:15)" }
         };
+
+        // Figuras históricas y cronológicas adicionales de la Carta de Adams (1871)
+        // Formato: [name, birth, death, stream, gender, father, mother, birthPlace, badge, meaning, reference, notes, messianic]
+        const ADAMS_SUPPLEMENTAL = [
+            // Jueces de Israel & Silo (Streams 4 y 5)
+            ["Aod (Juez)", -1365, -1285, 5, "M", "", "", "Benjamín", "2º Juez · 80 años de reposo", "Unido / Fuerte", "Jueces 3:12-30", "Juez zurdo de Benjamín; libró a Israel de Eglón rey de Moab.", false],
+            ["Débora (Jueza)", -1295, -1230, 5, "F", "", "", "Monte de Efraín", "4ª Jueza y Profetisa · 40a paz", "Abeja", "Jueces 4–5", "Profetisa y jueza en Efraín; junto a Barac venció a Sísara en el Cisón.", false],
+            ["Gedeón (Juez)", -1245, -1175, 5, "M", "", "", "Ofra (Manasés)", "5º Juez · 300 contra Madián", "El que derriba", "Jueces 6–8", "Llamado Jerobaal; libró a Israel de los madianitas.", false],
+            ["Jefté (Juez)", -1185, -1130, 5, "M", "", "", "Galaad", "8º Juez · Juzgó 6a en Galaad", "Él abrirá", "Jueces 11–12", "Caudillo galaadita que defendió a Israel frente a Amón.", false],
+            ["Sansón (Juez)", -1155, -1117, 5, "M", "", "", "Zora (Dan)", "12º Juez · Nazareo 20 años", "Solar / Hombre del sol", "Jueces 13–16", "Nazareo de la tribu de Dan frente al dominio filisteo.", false],
+            ["Elí (Sumo Sacerdote)", -1215, -1117, 4, "M", "", "", "Silo", "98 años · Sacerdote y Juez 40a", "Elevado / Excelso", "1 Samuel 1–4", "Sumo sacerdote en el tabernáculo de Silo; formó al joven Samuel.", false],
+
+            // Reino del Norte: Reyes de Israel 975–722 a.C. (Stream 6)
+            ["Jeroboam I", -1015, -954, 6, "M", "", "", "Sereda (Efraín)", "1er Rey de Israel (975–954 a.C.)", "El pueblo se multiplica", "1 Reyes 11–14", "Hijo de Nabat; encabezó las diez tribus del norte tras la división del reino.", false],
+            ["Nadab (Israel)", -980, -953, 6, "M", "Jeroboam I", "", "Tirsa", "2º Rey del Norte (954–953 a.C.)", "Generoso", "1 Reyes 15:25-31", "Hijo de Jeroboam I; reinó dos años sobre Israel.", false],
+            ["Baasa (Israel)", -995, -930, 6, "M", "", "", "Isacar", "3er Rey del Norte (953–930 a.C.)", "Audaz", "1 Reyes 15–16", "Reinó 24 años desde Tirsa sobre el reino del norte.", false],
+            ["Omri (Israel)", -965, -918, 6, "M", "", "", "Samaria", "Fundó Samaria (929–918 a.C.)", "Siervo de Yahveh", "1 Reyes 16:16-28", "Estableció a Samaria como capital permanente del Reino del Norte.", false],
+            ["Acab", -945, -897, 6, "M", "Omri (Israel)", "", "Samaria", "Reinó 22a (918–897 a.C.)", "Hermano del padre", "1 Reyes 16–22", "Esposo de Jezabel; confrontado por el profeta Elías en el Carmelo.", false],
+            ["Ocozías (Israel)", -920, -896, 6, "M", "Acab", "", "Samaria", "Reinó 2a (897–896 a.C.)", "Yahveh sostiene", "1 Reyes 22; 2 Reyes 1", "Hijo mayor de Acab; consultó a Baal-zebub y fue amonestado por Elías.", false],
+            ["Joram (Israel)", -918, -884, 6, "M", "Acab", "", "Samaria", "Reinó 12a (896–884 a.C.)", "Yahveh es exaltado", "2 Reyes 3; 9", "Último rey de la casa de Omri; depuesto por Jehú en Jezreel.", false],
+            ["Jehú (Rey de Israel)", -925, -856, 6, "M", "", "", "Samaria", "Reinó 28a (884–856 a.C.)", "Él es Yahveh", "2 Reyes 9–10", "Ungido por mandato de Eliseo; erradicó la dinastía de Acab.", false],
+            ["Joacaz (Israel)", -885, -839, 6, "M", "Jehú (Rey de Israel)", "", "Samaria", "Reinó 17a (856–839 a.C.)", "Yahveh ha asido", "2 Reyes 13:1-9", "Hijo de Jehú; afrontó la presión militar de Hazael de Siria.", false],
+            ["Joás (Israel)", -865, -825, 6, "M", "Joacaz (Israel)", "", "Samaria", "Reinó 16a (841–825 a.C.)", "Yahveh ha dado", "2 Reyes 13:10-25", "Visitó a Eliseo antes de morir y recuperó ciudades de manos de Siria.", false],
+            ["Jeroboam II", -850, -784, 6, "M", "Joás (Israel)", "", "Samaria", "Reinó 41a (825–784 a.C.)", "El pueblo contiende", "2 Reyes 14:23-29", "Restauró los límites de Israel en época de Jonás, Amós y Oseas.", false],
+            ["Manahem", -810, -761, 6, "M", "", "", "Samaria", "Reinó 10a (772–761 a.C.)", "Consolador", "2 Reyes 15:14-22", "Pagó tributo a Tiglat-pileser III (Pul) de Asiria.", false],
+            ["Peka", -800, -739, 6, "M", "", "", "Samaria", "Reinó 20a (759–739 a.C.)", "Vigilante", "2 Reyes 15:27-37; Isaías 7", "Coalición siro-efraimita contra Acaz de Judá.", false],
+            ["Oseas (Rey de Israel)", -775, -722, 6, "M", "", "", "Samaria", "Último Rey · Caída de Samaria (722 a.C.)", "Salvación", "2 Reyes 17", "Último monarca de Israel antes del cautiverio asirio bajo Salmanasar V / Sargón II.", false],
+
+            // Profetas del Antiguo Testamento (Stream 7)
+            ["Elías (Profeta)", -945, -896, 7, "M", "", "", "Tisbe (Galaad)", "Monte Carmelo · Arrebatado ~896 a.C.", "Mi Dios es Yahveh", "1 Reyes 17–2 Reyes 2", "Profeta en Israel bajo Acab y Ocozías; subió al cielo en torbellino.", false],
+            ["Eliseo (Profeta)", -915, -838, 7, "M", "", "", "Abel-mehola", "Sucesor de Elías · ~58a ministerio", "Mi Dios es salvación", "1 Reyes 19; 2 Reyes 2–13", "Ministró desde Joram hasta Joás de Israel.", false],
+            ["Jonás (Profeta)", -835, -780, 7, "M", "", "", "Gat-hefer", "Enviado a Nínive · ~785 a.C.", "Paloma", "2 Reyes 14:25; Jonás", "Profeta galileo contemporáneo de Jeroboam II.", false],
+            ["Amós (Profeta)", -810, -755, 7, "M", "", "", "Tecoa (Judá)", "Profetizó en Betel (~787 a.C.)", "El que lleva carga", "Libro de Amós", "Pastor de Tecoa enviado al Reino del Norte bajo Uzías y Jeroboam II.", false],
+            ["Oseas (Profeta)", -795, -722, 7, "M", "", "", "Israel del Norte", "Profetizó hasta 722 a.C.", "Salvación", "Libro de Oseas", "Anunció el juicio y la restauración redentora de Israel.", false],
+            ["Isaías (Profeta)", -775, -690, 7, "M", "", "", "Jerusalén", "Bajo Uzías, Jotam, Acaz y Ezequías", "Yahveh es salvación", "Libro de Isaías; 2 Reyes 19", "Profeta mesiánico en Judá durante la crisis neoasiria.", false],
+            ["Miqueas (Profeta)", -770, -695, 7, "M", "", "", "Moreset-gat", "Anunció Belén (Miq 5:2)", "¿Quién como Yahveh?", "Libro de Miqueas", "Contemporáneo de Isaías en Judá.", false],
+            ["Sofonías (Profeta)", -660, -605, 7, "M", "", "", "Jerusalén", "Reforma de Josías (~630 a.C.)", "Yahveh ha escondido", "Libro de Sofonías", "Profetizó en el reinado del rey Josías antes de la caída de Nínive.", false],
+            ["Jeremías (Profeta)", -650, -580, 7, "M", "", "", "Anatot (Benjamín)", "Los 70 años de Exilio (586 a.C.)", "Yahveh exalta", "Libro de Jeremías; Lam", "Profetizó desde Josías hasta después de la caída de Jerusalén.", false],
+            ["Habacuc (Profeta)", -635, -595, 7, "M", "", "", "Judá", "Vísperas del asedio caldeo", "Abrazo", "Libro de Habacuc", "«Mas el justo por su fe vivirá» (Hab 2:4).", false],
+            ["Ezequiel (Profeta)", -622, -570, 7, "M", "", "", "Jerusalén / Babilonia", "Deportado 597 a.C. · Río Quebar", "Dios fortalece", "Libro de Ezequiel", "Sacerdote y profeta entre los exiliados junto a Jeconías.", false],
+            ["Daniel (Profeta)", -620, -534, 7, "M", "", "", "Jerusalén / Babilonia", "Deportado 605 a.C. · 4 Imperios", "Dios es mi juez", "Libro de Daniel", "Sirvió en Babilonia y Medo-Persia hasta el reinado de Ciro.", false],
+            ["Hageo (Profeta)", -565, -505, 7, "M", "", "", "Babilonia / Jerusalén", "Segundo Templo (520 a.C.)", "Festivo", "Libro de Hageo; Esdras 5:1", "Impulsó la reconstrucción del templo junto a Zorobabel.", false],
+            ["Zacarías (Profeta)", -550, -490, 7, "M", "", "", "Babilonia / Jerusalén", "Profeta del Retorno (520–518 a.C.)", "Yahveh se ha acordado", "Libro de Zacarías", "Profeta mesiánico contemporáneo de Hageo y Josué.", false],
+            ["Malaquías (Profeta)", -455, -395, 7, "M", "", "", "Jerusalén", "Último profeta del AT (~430 a.C.)", "Mi mensajero", "Libro de Malaquías", "Cierre profético del Antiguo Testamento en época de Nehemías.", false],
+
+            // Postexilio & Período Intertestamentario (Stream 4)
+            ["Josué (Sumo Sacerdote)", -575, -508, 4, "M", "Josadac", "", "Jerusalén", "Sumo Sacerdote del Retorno (536 a.C.)", "Yahveh es salvación", "Esdras 3–5; Zacarías 3", "Hijo de Josadac; edificó el altar y el Segundo Templo con Zorobabel.", false],
+            ["Esdras (Escriba)", -495, -425, 4, "M", "", "", "Babilonia / Jerusalén", "Escriba · Reforma 458 a.C.", "Ayuda", "Esdras 7–10; Nehemías 8", "Sacerdote y escriba versado en la Ley que regresó bajo Artajerjes.", false],
+            ["Nehemías (Gobernador)", -480, -415, 4, "M", "", "", "Susa / Jerusalén", "Murallas reconstruidas (445 a.C.)", "Yahveh consuela", "Libro de Nehemías", "Copero de Artajerjes y gobernador de Judea.", false],
+            ["Onías III (Sumo Sacerdote)", -220, -171, 4, "M", "", "", "Jerusalén", "Sacerdocio previo a los Macabeos", "Fuerza de Yahveh", "2 Macabeos 3–4", "Sumo sacerdote en los inicios del conflicto seléucida.", false],
+            ["Judas Macabeo", -195, -160, 4, "M", "", "", "Modín / Jerusalén", "Purificación del Templo (164 a.C.)", "El Martillo", "1 Macabeos 2–9", "Líder de la rebelión macabea contra Antíoco IV Epífanes.", false],
+            ["Zacarías (Padre de Juan)", -60, 5, 4, "M", "", "", "Montañas de Judá", "Turno de Abías · Lc 1", "Yahveh recuerda", "Lucas 1:5-80", "Sacerdote casado con Elisabet; padre de Juan el Bautista.", false],
+
+            // Puente Genealógico hasta Cristo: Mateo 1 / Lucas 3 (Stream 0)
+            ["Abiud", -520, -450, 0, "M", "Zorobabel", "", "Jerusalén", "Hijo de Zorobabel (Mt 1:13)", "Mi padre es gloria", "Mateo 1:13", "Descendiente davídico tras la reconstrucción del templo.", true],
+            ["Eliaquim (Mt 1)", -465, -395, 0, "M", "Abiud", "", "Judea", "Línea real postexílica (Mt 1:13)", "Dios establece", "Mateo 1:13", "Eslabón de la genealogía davídica durante el Imperio Persa.", true],
+            ["Azor", -415, -345, 0, "M", "Eliaquim (Mt 1)", "", "Judea", "Línea de David (Mt 1:13-14)", "Ayudador", "Mateo 1:13-14", "Antepasado de Jesús al final del período persa.", true],
+            ["Sadoc (Mt 1)", -360, -290, 0, "M", "Azor", "", "Judea", "Época griega (Mt 1:14)", "Justo", "Mateo 1:14", "Genealogía davídica durante la expansión helenística.", true],
+            ["Aquim", -305, -235, 0, "M", "Sadoc (Mt 1)", "", "Judea", "Período ptolemaico (Mt 1:14)", "El Señor establecerá", "Mateo 1:14", "Antepasado davídico en Judea helenística.", true],
+            ["Eliud", -250, -180, 0, "M", "Aquim", "", "Judea", "Período seléucida (Mt 1:14-15)", "Dios es mi majestad", "Mateo 1:14-15", "Eslabón mesiánico en vísperas de los Macabeos.", true],
+            ["Eleazar (Mt 1)", -195, -125, 0, "M", "Eliud", "", "Judea", "Época macabea (Mt 1:15)", "Dios ayuda", "Mateo 1:15", "Antepasado de José durante la dinastía asmonea.", true],
+            ["Matán", -135, -65, 0, "M", "Eleazar (Mt 1)", "", "Judea", "Época asmonea (Mt 1:15)", "Don / Regalo", "Mateo 1:15", "Abuelo paterno de José de Nazaret.", true],
+            ["Jacob (Padre de José)", -75, -12, 0, "M", "Matán", "", "Belén / Galilea", "Padre de José (Mt 1:15-16)", "Suplantador", "Mateo 1:15-16", "Padre de José en la genealogía real de Mateo.", true],
+            ["José de Nazaret", -30, 22, 0, "M", "Jacob (Padre de José)", "", "Belén / Nazaret", "Heredero davídico (Mt 1:16)", "Que él añada", "Mateo 1–2; Lucas 2", "Esposo de María y padre legal de Jesús en la casa de David.", true],
+            ["María (Madre de Jesús)", -22, 48, 0, "F", "", "", "Nazaret (Galilea)", "Línea davídica (Lc 1; Lc 3)", "Amada / Rebeldía", "Lucas 1–2; Mateo 1; Hechos 1:14", "Madre de Jesús de Nazaret, descendiente de David por Natán (Lc 3).", true],
+            ["Jesús de Nazaret", -4, 30, 0, "M", "José de Nazaret", "María (Madre de Jesús)", "Belén / Nazaret", "★ Centro de la Historia (4 a.C.–30 d.C.)", "Yahveh es salvación", "Mateo 1; Lucas 3; Evangelios", "Cumplimiento de la promesa mesiánica de Génesis 3:15 y 2 Samuel 7; el eje temporal de la Carta de Adams.", true],
+
+            // Nuevo Testamento / Siglo I d.C. (Stream 7)
+            ["Juan el Bautista", -5, 29, 7, "M", "Zacarías (Padre de Juan)", "", "Judea / Jordán", "Precursor del Mesías · Mt 3", "Yahveh es benévolo", "Mateo 3; Lucas 1; 3", "Último profeta de transición entre los pactos; bautizó en el Jordán.", false],
+            ["Simón Pedro (Apóstol)", -1, 67, 7, "M", "", "", "Betsaida (Galilea)", "Apóstol · Pentecostés (Hch 2)", "Piedra / Roca", "Evangelios; Hechos 1–12; 1–2 Pe", "Pescador galileo y apóstol en Jerusalén y entre los dispersos.", false],
+            ["Pablo de Tarso (Apóstol)", 5, 67, 7, "M", "", "", "Tarso (Cilicia)", "Apóstol a los gentiles · Epístolas", "Pequeño", "Hechos 9–28; Epístolas Paulinas", "De tribu de Benjamín; predicó por Asia Menor, Grecia y Roma.", false],
+            ["Juan (Apóstol)", 6, 100, 7, "M", "", "", "Galilea / Éfeso", "Evangelio y Apocalipsis (~95 d.C.)", "Yahveh es benévolo", "Evangelio de Juan; Apocalipsis", "Apóstol longevo hasta el final del siglo I d.C. en Patmos y Éfeso.", false]
+        ];
 
         const MESSIANIC_DIRECT = new Set([
             "Adam", "Eva", "Set", "Enós", "Cainán", "Mahalaleel", "Jared", "Enoc", "Matusalén", "Lamec", "Noé",
@@ -831,11 +1105,13 @@
             "Abraham", "Isaac", "Israel", "Judá", "Fares", "Hezrón", "Ram", "Aminadab", "Naasón", "Salmón",
             "Boaz", "Obed", "Isaí", "David", "Salomón", "Roboam", "Abías", "Asa", "Josafat", "Joram", "Ocozías",
             "Joás", "Amasías", "Azarías", "Jotam", "Acaz", "Ezequías", "Manasés", "Amón", "Josías", "Joacim",
-            "Jeconías", "Salatiel", "Pedaías", "Zorobabel"
+            "Jeconías", "Salatiel", "Pedaías", "Zorobabel",
+            ...ADAMS_SUPPLEMENTAL.filter(r => r[12]).map(r => r[0])
         ]);
 
         const KEY_PEOPLE_SET = new Set([
             ...Object.keys(PATRIARCH_CHRONOLOGY),
+            ...ADAMS_SUPPLEMENTAL.map(r => r[0]),
             "Seba", "Havila", "Sabta", "Raama", "Sabteca", "Dedán", "Nebaiot", "Cedar", "Madián",
             "Elifaz", "Reuel", "Amalec", "Bela", "Jobab", "Zera", "Sela", "Caleb", "Hur", "Bezaleel",
             "Gersón", "Merari", "Eleazar", "Finees", "Sadoc", "Asaf", "Hemán", "Etán", "Absalón", "Natán", "Tamar"
@@ -855,9 +1131,9 @@
         /* ── Guided Presentation Chapters (Tour de Adams Chart) ─ */
         const PRESENTATION_CHAPTERS = [
             {
-                kicker: "CAPÍTULO 1 DE 8 · 4004 a.C. (0 AM)",
+                kicker: "CAPÍTULO 1 DE 10 · 4004 a.C. (0 AM)",
                 title: "El Mapa Sincronológico de la Historia",
-                body: "Inspirada en la célebre Carta Sincronológica de Sebastian C. Adams (1871), esta vista muestra los linajes bíblicos como ríos paralelos del tiempo. La regla superior marca los años desde la Creación (AM) y la inferior los años antes de Cristo (a.C.).",
+                body: "Inspirada en la célebre Carta Sincronológica de Sebastian C. Adams (1871), esta vista muestra los linajes bíblicos como ríos paralelos del tiempo. La regla superior marca los años desde la Creación (AM) y la inferior los años antes y después de Cristo.",
                 fact: "💡 Cada barra horizontal representa la vida completa de una persona, permitiendo ver de un vistazo quiénes convivieron en la misma época.",
                 focusYear: -3870,
                 scrollYear: -4020,
@@ -865,9 +1141,9 @@
                 highlight: ["Adam", "Eva", "Set", "Enós"]
             },
             {
-                kicker: "CAPÍTULO 2 DE 8 · 4004 – 2348 a.C.",
+                kicker: "CAPÍTULO 2 DE 10 · 4004 – 2348 a.C.",
                 title: "Longevidad Antediluviana y el Arrebatamiento de Enoc",
-                body: "Antes del Diluvio, las vidas superaban los 900 años. Observa cómo la barra de Adán (930 años) se extiende a lo largo de nueve siglos: Adán convivió simultáneamente con siete generaciones de descendientes hasta Lamec, el padre de Noé.",
+                body: "Antes del Diluvio, las vidas superaban los 900 años. En Génesis 5 las bifurcaciones indican la edad paterna exacta al nacer cada sucesor; Adán (930 años) convivió con siete generaciones de descendientes hasta Lamec.",
                 fact: "★ Enoc vivió 365 años y «caminó con Dios, y desapareció, porque le llevó Dios» en 3017 a.C., tan solo 57 años después de la muerte de Adán.",
                 focusYear: -3100,
                 scrollYear: -3800,
@@ -875,7 +1151,7 @@
                 highlight: ["Adam", "Set", "Jared", "Enoc", "Matusalén", "Lamec"]
             },
             {
-                kicker: "CAPÍTULO 3 DE 8 · 2348 a.C. (1656 AM)",
+                kicker: "CAPÍTULO 3 DE 10 · 2348 a.C. (1656 AM)",
                 title: "Matusalén y el Diluvio Universal",
                 body: "Matusalén (969 años) es el ser humano más longevo registrado en las Escrituras. Su nombre significa proféticamente «cuando muera, será enviado», y según la cronología del Génesis falleció exactamente en el año 1656 AM: el año del Diluvio.",
                 fact: "🌊 Mueve el escáner sobre la línea vertical del 2348 a.C. para ver la transición abrupta donde sólo Noé y su familia cruzan al mundo post-diluviano.",
@@ -885,7 +1161,7 @@
                 highlight: ["Matusalén", "Lamec", "Noé", "Sem", "Cam", "Jafet"]
             },
             {
-                kicker: "CAPÍTULO 4 DE 8 · 2348 – 2100 a.C.",
+                kicker: "CAPÍTULO 4 DE 10 · 2348 – 2100 a.C.",
                 title: "Los Tres Grandes Ríos: Sem, Cam y Jafet",
                 body: "Tras el Diluvio, la humanidad se bifurca desde Noé en tres corrientes paralelas en 1 Crónicas 1: Jafet (pueblos del norte y Asia Menor), Cam (Mesopotamia temprana, Nimrod, Egipto y Canaán) y Sem (la línea de la promesa). Nota cómo la longevidad comienza a descender drásticamente.",
                 fact: "🏛️ En la época de Peleg («división», 2247–2008 a.C.) ocurrió la confusión de lenguas en Babel y el esparcimiento de las naciones.",
@@ -895,7 +1171,7 @@
                 highlight: ["Noé", "Sem", "Cam", "Jafet", "Nimrod", "Arfaxad", "Heber", "Peleg"]
             },
             {
-                kicker: "CAPÍTULO 5 DE 8 · 1996 – 1821 a.C.",
+                kicker: "CAPÍTULO 5 DE 10 · 1996 – 1821 a.C.",
                 title: "El Secreto de Adams Chart: ¡Sem y Abraham convivieron!",
                 body: "Uno de los mayores asombros al desplegar la Carta de Adams es comprobar que Sem (hijo de Noé, 600 años) seguía vivo cuando Abraham fue llamado de Ur de los Caldeos, e incluso llegó a vivir cuando Isaac ya tenía 50 años.",
                 fact: "⚡ Al situar el escáner en 1900 a.C., aparecen juntos como contemporáneos Sem (546 años), Heber (381 años), Abraham (96 años) e Ismael (10 años).",
@@ -905,40 +1181,64 @@
                 highlight: ["Sem", "Heber", "Taré", "Abraham", "Ismael", "Isaac"]
             },
             {
-                kicker: "CAPÍTULO 6 DE 8 · 1836 – 1451 a.C.",
-                title: "Las Doce Tribus, Egipto y el Éxodo",
-                body: "Desde Isaac el río se abre en Esaú (Edom) e Israel (Jacob). Sus doce hijos dan origen a las doce tribus, descendiendo a Egipto en el tiempo de José. Siglos después, de la corriente de Leví surgen Aarón y Moisés para liderar el Éxodo (1491 a.C.).",
-                fact: "📜 Las corrientes IV, V y VI muestran en paralelo los reyes edomitas, el sacerdocio aarónico y el liderazgo militar de Josué.",
-                focusYear: -1500,
-                scrollYear: -1920,
-                zoom: 1.25,
-                highlight: ["Israel", "José", "Leví", "Judá", "Aarón", "Moisés", "Josué"]
+                kicker: "CAPÍTULO 6 DE 10 · 1836 – 1100 a.C.",
+                title: "Las Doce Tribus, Éxodo y los Jueces de Israel",
+                body: "Desde Isaac el río se abre en Esaú y las doce tribus de Israel. Tras el Éxodo (1491 a.C.) bajo Moisés y Aarón, la corriente VI registra el ciclo de los Jueces —Otoniel, Aod, Débora, Gedeón, Jefté y Sansón— hasta Elí y Samuel.",
+                fact: "📜 Las corrientes IV, V y VI muestran simultáneamente los reyes de Edom, el sacerdocio aarónico en Silo y los libertadores de las tribus.",
+                focusYear: -1280,
+                scrollYear: -1750,
+                zoom: 1.2,
+                highlight: ["Moisés", "Aarón", "Josué", "Otoniel", "Débora (Jueza)", "Gedeón (Juez)", "Sansón (Juez)", "Elí (Sumo Sacerdote)"]
             },
             {
-                kicker: "CAPÍTULO 7 DE 8 · 1085 – 975 a.C.",
+                kicker: "CAPÍTULO 7 DE 10 · 1085 – 975 a.C.",
                 title: "La Monarquía Unida: Saúl, David y Salomón",
-                body: "El linaje de Judá culmina en Belén con David, consolidando el reino tras Saúl (de la tribu de Benjamín). Salomón edifica el Primer Templo en Jerusalén (1012 a.C.) mientras el sacerdocio levítico sirve junto al trono.",
+                body: "El linaje de Judá culmina en Belén con David, consolidando el reino tras Saúl (de la tribu de Benjamín). Salomón edifica el Primer Templo en Jerusalén (1012 a.C.) mientras el sacerdocio levítico de Sadoc sirve junto al trono.",
                 fact: "👑 En 1020 a.C. coinciden el rey David al final de su reinado y la juventud de Salomón junto al sumo sacerdote Sadoc.",
                 focusYear: -1020,
                 scrollYear: -1350,
                 zoom: 1.4,
-                highlight: ["Boaz", "Obed", "Isaí", "Saúl", "David", "Salomón"]
+                highlight: ["Samuel", "Saúl", "David", "Sadoc", "Salomón"]
             },
             {
-                kicker: "CAPÍTULO 8 DE 8 · 975 – 495 a.C.",
-                title: "Reyes de Judá, el Exilio y Zorobabel",
-                body: "Los capítulos 3 al 9 de 1 Crónicas registran el linaje real de Judá a través de reyes reformadores como Ezequías y Josías hasta la deportación a Babilonia (586 a.C.), preservando la línea hasta Zorobabel en el retorno del exilio.",
-                fact: "🏛️ La Carta completa queda ahora a tu disposición: haz clic en cualquier barra para abrir su ficha o explora libremente con el escáner.",
-                focusYear: -600,
-                scrollYear: -980,
-                zoom: 1.3,
-                highlight: ["Roboam", "Ezequías", "Josías", "Sedequías", "Jeconías", "Zorobabel", "Josadac"]
+                kicker: "CAPÍTULO 8 DE 10 · 975 – 586 a.C.",
+                title: "Reino Dividido (Judá e Israel) y los Profetas",
+                body: "Tras la ruptura del 975 a.C., la corriente VII sigue a los reyes del norte (Jeroboam I, Acab, Jehú, Jeroboam II hasta la caída de Samaria en 722 a.C.) frente a Judá en la corriente I y los profetas (Elías, Eliseo, Isaías, Jeremías) en la corriente VIII.",
+                fact: "🔥 En ~750 a.C. coinciden en paralelo Uzías y Jotam (Judá), Jeroboam II y Manahem (Israel) y las voces de Isaías, Amós, Oseas y Miqueas.",
+                focusYear: -730,
+                scrollYear: -1020,
+                zoom: 1.25,
+                highlight: ["Roboam", "Jeroboam I", "Acab", "Elías (Profeta)", "Oseas (Rey de Israel)", "Isaías (Profeta)", "Ezequías", "Jeremías (Profeta)"]
+            },
+            {
+                kicker: "CAPÍTULO 9 DE 10 · 586 – 63 a.C.",
+                title: "Exilio, Imperio Persa, Grecia y los Macabeos",
+                body: "Tras Babilonia (Daniel y Ezequiel) y el decreto de Ciro (538 a.C.), Zorobabel y Josué reconstruyen el Templo con Hageo, Zacarías, Esdras y Nehemías. La corriente I conserva el linaje davídico de Mateo 1 bajo Alejandro Magno y la gesta de Judas Macabeo (164 a.C.).",
+                fact: "🏛️ Observa el puente ininterrumpido desde Zorobabel hasta Matán y Jacob en los siglos de silencio intertestamentario.",
+                focusYear: -250,
+                scrollYear: -620,
+                zoom: 1.25,
+                highlight: ["Daniel (Profeta)", "Zorobabel", "Josué (Sumo Sacerdote)", "Esdras (Escriba)", "Nehemías (Gobernador)", "Malaquías (Profeta)", "Judas Macabeo", "Eliud"]
+            },
+            {
+                kicker: "CAPÍTULO 10 DE 10 · 4 a.C. – 100 d.C.",
+                title: "La Plenitud de los Tiempos y el Siglo I d.C.",
+                body: "Como en el panel final de la Carta de Adams, todas las líneas mesiánicas y proféticas convergen en Jesús de Nazaret (4 a.C.–30 d.C.), precedido por Juan el Bautista y continuado por los apóstoles Pedro, Pablo y Juan hasta el cierre del siglo I d.C.",
+                fact: "★ La Carta completa de 4.100 años queda a tu disposición: pulsa cualquier barra o usa el escáner inferior para recorrer desde el Edén hasta Roma.",
+                focusYear: 20,
+                scrollYear: -95,
+                zoom: 1.35,
+                highlight: ["Zacarías (Padre de Juan)", "José de Nazaret", "María (Madre de Jesús)", "Jesús de Nazaret", "Juan el Bautista", "Simón Pedro (Apóstol)", "Pablo de Tarso (Apóstol)", "Juan (Apóstol)"]
             }
         ];
 
         /* ── Data Initialization ────────────────────────────── */
         function getCorreccionesData() {
-            return JSON.parse(localStorage.getItem("correcciones_genealogia") || localStorage.getItem("genealogia_correcciones_v1") || '{"modificaciones":{},"nuevos":[]}');
+            try {
+                return JSON.parse(localStorage.getItem("correcciones_genealogia") || localStorage.getItem("genealogia_correcciones_v1") || '{"modificaciones":{},"nuevos":[]}');
+            } catch {
+                return { modificaciones: {}, nuevos: [] };
+            }
         }
 
         function buildRelationshipMap() {
@@ -981,10 +1281,14 @@
                     child.reference = row["Referencia"] || "";
                 }
                 if (father && cn) {
-                    father.children.push({ name: cn, gender: row["Género Hijos"] || "M" });
+                    if (!father.children.some(c => c.name === cn)) {
+                        father.children.push({ name: cn, gender: row["Género Hijos"] || "M" });
+                    }
                     if (mn) { father.spouses.add(mn); mother.spouses.add(fn); }
                 }
-                if (mother && cn) mother.children.push({ name: cn, gender: row["Género Hijos"] || "M" });
+                if (mother && cn && !mother.children.some(c => c.name === cn)) {
+                    mother.children.push({ name: cn, gender: row["Género Hijos"] || "M" });
+                }
                 if (fn && row["Significado del Nombre (Padre)"]) father.meaning = row["Significado del Nombre (Padre)"];
             });
 
@@ -1019,6 +1323,25 @@
             if (people["Jafet"] && !people["Jafet"].father) people["Jafet"].father = "Noé";
             if (people["Efraín"] && !people["Efraín"].father) people["Efraín"].father = "José";
             if (people["Manasés"] && !people["Manasés"].father) people["Manasés"].father = "José";
+
+            // Inject Adams' Synchronological Chart supplemental figures (Judges, Israel Kings, Prophets, NT Bridge)
+            ADAMS_SUPPLEMENTAL.forEach(entry => {
+                const [name, birth, death, stream, gender, father, mother, birthPlace, badge, meaning, reference, notes] = entry;
+                if (people[name]) return;
+                people[name] = {
+                    name, gender: gender || "M", father: father || "", mother: mother || "",
+                    birthPlace: birthPlace || "", spouses: new Set(), children: [],
+                    notes: notes || "", reference: reference || "", meaning: meaning || "",
+                    birth, death, exact: true, stream, streamOverride: stream, gen: 99,
+                    badge: badge || "", isSupplemental: true
+                };
+                if (father && people[father] && !people[father].children.some(c => c.name === name)) {
+                    people[father].children.push({ name, gender: gender || "M" });
+                }
+                if (mother && people[mother] && !people[mother].children.some(c => c.name === name)) {
+                    people[mother].children.push({ name, gender: gender || "M" });
+                }
+            });
         }
 
         function getLineagePath(name) {
@@ -1042,6 +1365,7 @@
                 people[name].death = c.death;
                 people[name].exact = !!c.exact;
                 people[name].badge = c.badge || "";
+                if (c.stream !== undefined) people[name].streamOverride = c.stream;
             });
 
             // 2. Generation depth calculation
@@ -1062,14 +1386,14 @@
 
                     if (p.father && people[p.father] && people[p.father].birth !== null) {
                         const fBirth = people[p.father].birth;
-                        const step = fBirth < -2348 ? 85 : (fBirth < -1800 ? 45 : (fBirth < -1100 ? 38 : 28));
-                        p.birth = Math.min(-450, fBirth + step);
+                        const step = fBirth < -2348 ? 85 : (fBirth < -1800 ? 45 : (fBirth < -1100 ? 38 : (fBirth < -540 ? 28 : 22)));
+                        p.birth = Math.min(-395, fBirth + step);
                         changed = true;
                         return;
                     }
                     if (p.mother && people[p.mother] && people[p.mother].birth !== null) {
                         const mBirth = people[p.mother].birth;
-                        p.birth = Math.min(-450, mBirth + 30);
+                        p.birth = Math.min(-395, mBirth + 26);
                         changed = true;
                         return;
                     }
@@ -1087,7 +1411,7 @@
             Object.keys(people).forEach(name => {
                 const p = people[name];
                 if (p.birth === null) {
-                    p.birth = p.gen !== 99 ? Math.min(-480, -4004 + p.gen * 45) : -1200;
+                    p.birth = p.gen !== 99 ? Math.min(-420, -4004 + p.gen * 45) : -1200;
                 }
                 if (p.death === null) {
                     let span = 72;
@@ -1096,13 +1420,15 @@
                     else if (p.birth < -1850) span = 165;
                     else if (p.birth < -1500) span = 115;
                     else if (p.birth < -1100) span = 85;
-                    p.death = Math.min(-430, p.birth + span);
+                    p.death = Math.min(-385, p.birth + span);
                 }
-                if (p.death <= p.birth + 12) p.death = p.birth + 35;
+                if (p.death <= p.birth + 12) p.death = Math.min(-382, p.birth + 35);
 
-                // 5. Assign Stream (0..5)
+                // 5. Assign Stream (0..7)
                 const path = p.path || getLineagePath(name);
-                if (MESSIANIC_DIRECT.has(name)) {
+                if (p.streamOverride !== undefined) {
+                    p.stream = p.streamOverride;
+                } else if (MESSIANIC_DIRECT.has(name)) {
                     p.stream = 0;
                 } else if (path.includes("Jafet")) {
                     p.stream = 1;
@@ -1123,9 +1449,14 @@
         }
 
         /* ── Chart Geometry & Rendering ──────────────────────── */
-        const LEFT_LABEL_W = 190;
+        const STICKY_COL_W = 180;
+        function getStickyColW() {
+            const el = document.getElementById("streamStickyCol");
+            return (el && el.offsetWidth) ? el.offsetWidth : STICKY_COL_W;
+        }
+        const LEFT_PAD = 80;
         const RIGHT_PAD = 80;
-        const TOP_HEADER_H = 74;
+        const TOP_HEADER_H = 108;
         const BOTTOM_FOOTER_H = 38;
         const BAR_H = 22;
         const LANE_GAP = 6;
@@ -1134,19 +1465,21 @@
         let chartLayout = { totalW: 3600, totalH: 800, streamBoxes: [], placedNodes: {} };
 
         function yearToX(year, totalW) {
-            const usableW = totalW - LEFT_LABEL_W - RIGHT_PAD;
+            const usableW = totalW - LEFT_PAD - RIGHT_PAD;
             const ratio = (year - MIN_YEAR) / (MAX_YEAR - MIN_YEAR);
-            return LEFT_LABEL_W + ratio * usableW;
+            return LEFT_PAD + ratio * usableW;
         }
 
         function xToYear(x, totalW) {
-            const usableW = totalW - LEFT_LABEL_W - RIGHT_PAD;
-            const ratio = (x - LEFT_LABEL_W) / usableW;
+            const usableW = totalW - LEFT_PAD - RIGHT_PAD;
+            const ratio = (x - LEFT_PAD) / usableW;
             return Math.round(MIN_YEAR + ratio * (MAX_YEAR - MIN_YEAR));
         }
 
         function formatYearBC(y) {
-            return y < 0 ? `${Math.abs(Math.round(y))} a.C.` : `${Math.round(y)} d.C.`;
+            const ry = Math.round(y);
+            if (ry === 0) return "1 d.C.";
+            return ry < 0 ? `${Math.abs(ry)} a.C.` : `${ry} d.C.`;
         }
         function formatYearAM(y) {
             return `${Math.max(0, Math.round(y - CREATION_YEAR))} AM`;
@@ -1156,7 +1489,7 @@
             const svg = document.getElementById("adamsSvg");
             svg.innerHTML = "";
 
-            const baseW = detailMode === "all" ? 4200 : 3400;
+            const baseW = detailMode === "all" ? 4900 : 4100;
             const totalW = Math.round(baseW * zoomLevel);
 
             // Filter characters for current detailMode
@@ -1166,7 +1499,7 @@
             });
 
             // Greedy interval-packing per stream so lifespan bars never overlap
-            const streamNodes = [[], [], [], [], [], []];
+            const streamNodes = STREAMS.map(() => []);
             activePeople.forEach(p => {
                 streamNodes[p.stream].push(p);
             });
@@ -1254,6 +1587,10 @@
             svg.appendChild(defs);
 
             // 1. Stream Horizontal Bands
+            svg.appendChild(el("line", {
+                x1: 0, y1: TOP_HEADER_H, x2: totalW, y2: TOP_HEADER_H,
+                stroke: "var(--border)", "stroke-width": 1
+            }));
             streamBoxes.forEach((box, idx) => {
                 svg.appendChild(el("rect", {
                     x: 0, y: box.y, width: totalW, height: box.height,
@@ -1267,20 +1604,20 @@
                 }));
             });
 
-            // 2. Vertical Century Grid Lines (-4000 to -500)
-            for (let yr = -4000; yr <= -400; yr += 100) {
+            // 2. Vertical Century Grid Lines (-4000 to 100)
+            for (let yr = -4000; yr <= 100; yr += 100) {
                 const gx = yearToX(yr, totalW);
                 const isMajor = yr % 500 === 0;
                 svg.appendChild(el("line", {
-                    x1: gx, y1: TOP_HEADER_H - 22, x2: gx, y2: totalH - BOTTOM_FOOTER_H + 14,
-                    stroke: "var(--border-subtle)",
-                    "stroke-width": isMajor ? 1.2 : 0.7,
-                    "stroke-dasharray": isMajor ? "none" : "2,4",
-                    opacity: isMajor ? 0.55 : 0.3
+                    x1: gx, y1: TOP_HEADER_H - 24, x2: gx, y2: totalH - BOTTOM_FOOTER_H + 14,
+                    stroke: yr === 0 ? "var(--border)" : "var(--border-subtle)",
+                    "stroke-width": yr === 0 ? 1.6 : (isMajor ? 1.2 : 0.7),
+                    "stroke-dasharray": (isMajor || yr === 0) ? "none" : "2,4",
+                    opacity: yr === 0 ? 0.75 : (isMajor ? 0.55 : 0.3)
                 }));
             }
 
-            // 3. Era Top Strips & Milestone Vertical Ribbons
+            // 3. Era Top Strips, World Synchrony & Milestone Vertical Ribbons
             ERAS.forEach((era, i) => {
                 const x1 = yearToX(era.start, totalW);
                 const x2 = yearToX(era.end, totalW);
@@ -1298,39 +1635,65 @@
                 }
             });
 
+            // World History Synchrony Strip (y: 48..70)
+            WORLD_SYNCHRONY.forEach((w, i) => {
+                const x1 = yearToX(w.start, totalW);
+                const x2 = yearToX(w.end, totalW);
+                const bw = Math.max(2, x2 - x1);
+                svg.appendChild(el("rect", {
+                    x: x1, y: 48, width: bw, height: 22,
+                    fill: i % 2 === 0 ? "var(--surface-inset)" : "var(--bg)",
+                    stroke: "var(--border-subtle)", "stroke-width": 1
+                }));
+                if (bw > 95) {
+                    const maxChars = Math.floor((bw - 14) / 5.2);
+                    const lbl = w.label.length > maxChars ? w.label.slice(0, Math.max(8, maxChars - 1)) + "…" : w.label;
+                    svg.appendChild(el("text", {
+                        x: (x1 + x2) / 2, y: 62,
+                        "text-anchor": "middle", "font-size": 9, "font-weight": 600,
+                        fill: "var(--muted)"
+                    }, lbl));
+                }
+            });
+
             // Flood Deluge Band (~2348 BC) & Milestones
             const floodX = yearToX(-2348, totalW);
             svg.appendChild(el("rect", {
                 x: floodX - 6, y: TOP_HEADER_H, width: 12, height: totalH - TOP_HEADER_H - BOTTOM_FOOTER_H,
                 fill: "url(#floodHatch)"
             }));
+            const flagRowEnds = [-Infinity, -Infinity];
             MILESTONES.forEach(m => {
                 const mx = yearToX(m.year, totalW);
                 svg.appendChild(el("line", {
-                    x1: mx, y1: 48, x2: mx, y2: totalH - BOTTOM_FOOTER_H,
+                    x1: mx, y1: 70, x2: mx, y2: totalH - BOTTOM_FOOTER_H,
                     stroke: m.isFlood || m.isExile ? "var(--border)" : "var(--border-subtle)",
                     "stroke-width": m.isFlood || m.isExile ? 1.8 : 1.1,
                     "stroke-dasharray": m.isFlood ? "none" : "5,3",
                     opacity: 0.75
                 }));
-                // Milestone Flag at top (Neo-Skeuo monochrome tag)
-                const tagW = m.label.length * 5.6 + 14;
+                // Milestone Flag staggered across 2 tiers (y:73 or y:90) so adjacent flags never collide
+                const tagW = m.label.length * 5.4 + 12;
+                const tagLeft = mx - tagW / 2;
+                const tier = flagRowEnds[0] <= tagLeft - 4 ? 0 : (flagRowEnds[1] <= tagLeft - 4 ? 1 : (flagRowEnds[0] <= flagRowEnds[1] ? 0 : 1));
+                flagRowEnds[tier] = Math.max(flagRowEnds[tier], tagLeft + tagW);
+                const flagY = tier === 0 ? 73 : 90;
                 svg.appendChild(el("rect", {
-                    x: mx - tagW / 2, y: 51, width: tagW, height: 17, rx: 0,
+                    x: tagLeft, y: flagY, width: tagW, height: 15, rx: 0,
                     fill: m.isFlood || m.isExile ? "var(--surface-inset)" : "var(--surface-raised)",
                     stroke: "var(--border)", "stroke-width": 1
                 }));
                 svg.appendChild(el("text", {
-                    x: mx, y: 63, "text-anchor": "middle",
-                    "font-size": 9, "font-weight": 700, fill: "var(--text)", class: "adams-mono"
+                    x: mx, y: flagY + 10.5, "text-anchor": "middle",
+                    "font-size": 8.5, "font-weight": 700, fill: "var(--text)", class: "adams-mono"
                 }, m.label));
             });
 
-            // 4. Top Ruler (Anno Mundi) & Bottom Ruler (a.C.)
-            svg.appendChild(el("rect", { x: LEFT_LABEL_W, y: 0, width: totalW - LEFT_LABEL_W, height: 26, fill: "var(--surface)", stroke: "var(--border)", "stroke-width": 1.5 }));
-            svg.appendChild(el("rect", { x: LEFT_LABEL_W, y: totalH - BOTTOM_FOOTER_H, width: totalW - LEFT_LABEL_W, height: BOTTOM_FOOTER_H, fill: "var(--surface)", stroke: "var(--border)", "stroke-width": 1.5 }));
+            // 4. Top Ruler (Anno Mundi) & Bottom Ruler (a.C. / d.C.)
+            svg.appendChild(el("rect", { x: 0, y: 0, width: totalW, height: 26, fill: "var(--surface)", stroke: "var(--border)", "stroke-width": 1.5 }));
+            svg.appendChild(el("rect", { x: 0, y: totalH - BOTTOM_FOOTER_H, width: totalW, height: BOTTOM_FOOTER_H, fill: "var(--surface)", stroke: "var(--border)", "stroke-width": 1.5 }));
 
-            for (let yr = -4000; yr <= -400; yr += 100) {
+            for (let yr = -4000; yr <= 100; yr += 100) {
                 const rx = yearToX(yr, totalW);
                 const stepSkip = zoomLevel < 0.7 ? 200 : 100;
                 if (Math.abs(yr) % stepSkip === 0) {
@@ -1341,7 +1704,7 @@
                     svg.appendChild(el("text", {
                         x: rx, y: totalH - 14, "text-anchor": "middle",
                         "font-size": 10.5, "font-weight": 800, fill: "var(--text)", class: "adams-mono"
-                    }, `${Math.abs(yr)} a.C.`));
+                    }, formatYearBC(yr)));
                 }
             }
 
@@ -1372,6 +1735,25 @@
                         "stroke-dasharray": isCrossStream && !isMessianicLink ? "4,3" : "none",
                         opacity: isMessianicLink ? 0.85 : 0.45
                     }));
+
+                    // Genesis 5 & 11-25 Paternal Age Annotation on Begetting Branch (Adams style)
+                    if (isMessianicLink && p.exact && parentNode.person.exact && p.birth <= -1800) {
+                        const pAge = Math.round(p.birth - parentNode.person.birth);
+                        if (pAge > 10) {
+                            const lblX = (startX + endX) / 2;
+                            const lblY = (startY + endY) / 2 - 3;
+                            const txt = `${pAge}a`;
+                            const bw = txt.length * 5.2 + 6;
+                            branchLayer.appendChild(el("rect", {
+                                x: lblX - bw / 2, y: lblY - 8, width: bw, height: 11, rx: 0,
+                                fill: "var(--surface)", stroke: "var(--border-subtle)", "stroke-width": 0.7
+                            }));
+                            branchLayer.appendChild(el("text", {
+                                x: lblX, y: lblY, "text-anchor": "middle",
+                                "font-size": 8, "font-weight": 700, fill: "var(--text)", class: "adams-mono"
+                            }, txt));
+                        }
+                    }
                 });
             }
             svg.appendChild(branchLayer);
@@ -1450,45 +1832,34 @@
             }));
             svg.appendChild(scannerG);
 
-            // 8. Left Sticky Stream Header Column (rendered on top so scrolled content slides cleanly behind)
-            const wrapEl = document.getElementById("chartScrollWrap");
-            const currentScrollX = wrapEl ? wrapEl.scrollLeft : 0;
-            const labelColumn = el("g", {
-                id: "streamHeaderColumn",
-                transform: `translate(${currentScrollX}, 0)`
-            });
-            labelColumn.appendChild(el("rect", {
-                x: 0, y: 0, width: LEFT_LABEL_W, height: totalH,
-                fill: "var(--surface)", stroke: "var(--border)", "stroke-width": 2
-            }));
-            labelColumn.appendChild(el("text", {
-                x: LEFT_LABEL_W / 2, y: 34, "text-anchor": "middle",
-                "font-size": 13, fill: "var(--text)", class: "adams-title-tech"
-            }, "CARTA DE ADAMS"));
-            labelColumn.appendChild(el("text", {
-                x: LEFT_LABEL_W / 2, y: 52, "text-anchor": "middle",
-                "font-size": 9, fill: "var(--subtle)", class: "adams-mono"
-            }, "4004 a.C. — 450 a.C."));
-
-            streamBoxes.forEach(box => {
-                labelColumn.appendChild(el("rect", {
-                    x: 0, y: box.y, width: LEFT_LABEL_W, height: box.height,
-                    fill: box.stream.bg, stroke: "var(--border)", "stroke-width": 1
-                }));
-                labelColumn.appendChild(el("rect", {
-                    x: 8, y: box.y + 10, width: 6, height: box.height - 20,
-                    fill: box.stream.bar, stroke: "var(--border)", "stroke-width": 1
-                }));
-                labelColumn.appendChild(el("text", {
-                    x: 22, y: box.y + 24,
-                    "font-size": 10.5, "font-weight": 800, fill: "var(--text)"
-                }, box.stream.title));
-                labelColumn.appendChild(el("text", {
-                    x: 22, y: box.y + 39,
-                    "font-size": 8.5, fill: "var(--muted)"
-                }, box.stream.sub));
-            });
-            svg.appendChild(labelColumn);
+            // 8. Populate native CSS sticky stream legend column (GPU-locked, zero scroll glitch)
+            const stickyCol = document.getElementById("streamStickyCol");
+            if (stickyCol) {
+                stickyCol.innerHTML = `
+                    <div class="stream-sticky-header">
+                        <span class="stream-sticky-title-main">Carta de Adams</span>
+                        <span class="stream-sticky-sub-main">4004 a.C. — 100 d.C.</span>
+                    </div>
+                `;
+                streamBoxes.forEach((box, idx) => {
+                    const itemEl = document.createElement("div");
+                    itemEl.className = "stream-sticky-item";
+                    itemEl.style.height = `${box.height}px`;
+                    itemEl.style.background = box.stream.bg;
+                    itemEl.style.borderBottom = idx === streamBoxes.length - 1
+                        ? "2px solid var(--border)"
+                        : "1px dashed var(--border-subtle)";
+                    itemEl.innerHTML = `
+                        <div class="stream-sticky-accent" style="background:${box.stream.bar};"></div>
+                        <div class="stream-sticky-title">${box.stream.title}</div>
+                        <div class="stream-sticky-sub">${box.stream.sub}</div>
+                    `;
+                    stickyCol.appendChild(itemEl);
+                });
+                const footEl = document.createElement("div");
+                footEl.className = "stream-sticky-footer";
+                stickyCol.appendChild(footEl);
+            }
 
             renderMinimap();
             updateScannerYear(scannerYear, false);
@@ -1570,8 +1941,10 @@
             const wrap = document.getElementById("chartScrollWrap");
             const vp = document.getElementById("minimapViewport");
             if (!wrap || !vp || !chartLayout.totalW) return;
+            const colW = getStickyColW();
+            const visibleChartW = Math.max(80, wrap.clientWidth - colW);
             const leftPct = (wrap.scrollLeft / chartLayout.totalW) * 100;
-            const widthPct = (wrap.clientWidth / chartLayout.totalW) * 100;
+            const widthPct = (visibleChartW / chartLayout.totalW) * 100;
             vp.style.left = `${Math.max(0, Math.min(100, leftPct))}%`;
             vp.style.width = `${Math.max(4, Math.min(100, widthPct))}%`;
         }
@@ -1607,6 +1980,7 @@
         }
 
         function selectPerson(name) {
+            hideTooltip();
             selectedPersonName = name;
             document.querySelectorAll(".lifespan-group").forEach(g => {
                 g.classList.toggle("selected", g.dataset.name === name);
@@ -1617,29 +1991,120 @@
             const age = Math.round(p.death - p.birth);
             document.getElementById("drawName").textContent = p.name;
             document.getElementById("drawMeaning").textContent = p.meaning || "Significado no registrado.";
-            document.getElementById("drawStream").textContent = STREAMS[p.stream].title;
+            document.getElementById("drawStream").textContent = STREAMS[p.stream]?.title || "—";
             document.getElementById("drawBirthYear").textContent = `${formatYearBC(p.birth)} (${formatYearAM(p.birth)})`;
             document.getElementById("drawDeathYear").textContent = `${formatYearBC(p.death)} (${formatYearAM(p.death)})`;
             document.getElementById("drawAge").textContent = `${age} años ${p.exact ? "(Exacta)" : "(Est.)"}`;
             document.getElementById("drawGen").textContent = p.gen !== 99 ? `${p.gen}ª desde Adán` : "No determinada";
             document.getElementById("drawParents").textContent = [p.father, p.mother].filter(Boolean).join(" / ") || "—";
             document.getElementById("drawPlace").textContent = p.birthPlace || "—";
+
+            const badgeRow = document.getElementById("drawBadgeRow");
+            if (p.badge) {
+                document.getElementById("drawBadge").textContent = p.badge;
+                badgeRow.style.display = "flex";
+            } else {
+                badgeRow.style.display = "none";
+            }
+
+            // World Synchrony context overlapping [p.birth, p.death]
+            const worldMatches = WORLD_SYNCHRONY.filter(w => w.start <= p.death && w.end >= p.birth);
+            document.getElementById("drawWorldContext").textContent = worldMatches.length > 0
+                ? worldMatches.map(w => w.label).join(" · ")
+                : "Sin contexto universal registrado.";
+
+            // Children chips
+            const chSection = document.getElementById("drawChildrenSection");
+            const chList = document.getElementById("drawChildren");
+            chList.innerHTML = "";
+            if (p.children && p.children.length > 0) {
+                chSection.style.display = "block";
+                p.children.slice(0, 18).forEach(c => {
+                    const btn = document.createElement("button");
+                    btn.className = "drawer-chip";
+                    btn.textContent = c.name;
+                    btn.onclick = () => focusAndSelectPerson(c.name);
+                    chList.appendChild(btn);
+                });
+                if (p.children.length > 18) {
+                    const more = document.createElement("span");
+                    more.style.cssText = "font-size:10px; color:var(--subtle); align-self:center;";
+                    more.textContent = `+${p.children.length - 18} más`;
+                    chList.appendChild(more);
+                }
+            } else {
+                chSection.style.display = "none";
+            }
+
+            // Key overlapping contemporaries from Adams' Chart
+            const contSection = document.getElementById("drawContempSection");
+            const contList = document.getElementById("drawContemporaries");
+            contList.innerHTML = "";
+            const keyContemps = Object.values(people)
+                .filter(o => o.name !== p.name && KEY_PEOPLE_SET.has(o.name) && o.birth <= p.death && o.death >= p.birth)
+                .map(o => ({
+                    person: o,
+                    overlap: Math.round(Math.min(p.death, o.death) - Math.max(p.birth, o.birth))
+                }))
+                .filter(x => x.overlap > 0)
+                .sort((a, b) => {
+                    const aDir = MESSIANIC_DIRECT.has(a.person.name) ? 0 : 1;
+                    const bDir = MESSIANIC_DIRECT.has(b.person.name) ? 0 : 1;
+                    if (aDir !== bDir) return aDir - bDir;
+                    return b.overlap - a.overlap;
+                })
+                .slice(0, 10);
+
+            if (keyContemps.length > 0) {
+                contSection.style.display = "block";
+                keyContemps.forEach(item => {
+                    const btn = document.createElement("button");
+                    btn.className = "drawer-chip";
+                    btn.title = `${item.overlap} años contemporáneos`;
+                    btn.textContent = `${item.person.name} (${item.overlap}a)`;
+                    btn.onclick = () => focusAndSelectPerson(item.person.name);
+                    contList.appendChild(btn);
+                });
+            } else {
+                contSection.style.display = "none";
+            }
+
             document.getElementById("drawNotes").textContent = p.notes || "Sin notas biográficas adicionales.";
             document.getElementById("drawRef").textContent = p.reference || "";
-            document.getElementById("drawLinkFicha").href = `visor_genealogia.html?name=${encodeURIComponent(p.name)}`;
-            document.getElementById("drawLinkTree").href = `arbol_genealogico.html?highlight=${encodeURIComponent(p.name)}`;
+
+            const actionsRow = document.getElementById("drawActionsRow");
+            const suppNote = document.getElementById("drawSupplementalNote");
+            if (p.isSupplemental) {
+                if (actionsRow) actionsRow.style.display = "none";
+                if (suppNote) {
+                    suppNote.textContent = `[Registro sincronológico de Adams · Fuente: ${p.reference || "Escrituras e Historia"}]`;
+                    suppNote.style.display = "block";
+                }
+            } else {
+                if (actionsRow) actionsRow.style.display = "flex";
+                if (suppNote) suppNote.style.display = "none";
+                document.getElementById("drawLinkFicha").href = `visor_genealogia.html?name=${encodeURIComponent(p.name)}`;
+                document.getElementById("drawLinkTree").href = `arbol_genealogico.html?highlight=${encodeURIComponent(p.name)}`;
+            }
 
             const avatar = document.getElementById("drawAvatar");
             avatar.textContent = p.name.charAt(0);
             avatar.style.background = avatarGradient(p.name);
 
-            document.getElementById("detailDrawer").classList.remove("collapsed");
+            const drawer = document.getElementById("detailDrawer");
+            drawer.classList.remove("collapsed");
+            document.getElementById("drawerBackdrop")?.classList.add("open");
+            const dBody = drawer.querySelector(".drawer-body");
+            if (dBody) dBody.scrollTop = 0;
+            setTimeout(updateMinimapViewport, 80);
         }
 
         function closeDrawer() {
             document.getElementById("detailDrawer").classList.add("collapsed");
+            document.getElementById("drawerBackdrop")?.classList.remove("open");
             selectedPersonName = null;
             document.querySelectorAll(".lifespan-group").forEach(g => g.classList.remove("selected"));
+            setTimeout(updateMinimapViewport, 80);
         }
 
         function focusAndSelectPerson(name) {
@@ -1654,8 +2119,9 @@
             const node = chartLayout.placedNodes[name];
             if (node) {
                 const wrap = document.getElementById("chartScrollWrap");
+                const visibleChartW = Math.max(80, wrap.clientWidth - getStickyColW());
                 wrap.scrollTo({
-                    left: Math.max(0, node.x1 - wrap.clientWidth * 0.35),
+                    left: Math.max(0, node.x1 - visibleChartW * 0.35),
                     top: Math.max(0, node.y - wrap.clientHeight * 0.4),
                     behavior: "smooth"
                 });
@@ -1673,6 +2139,7 @@
         const PRES_DURATION_MS = 8500;
 
         function startPresentation(idx = 0) {
+            closeDrawer();
             isPresenting = true;
             presAutoPlay = true;
             document.getElementById("presentationPanel").classList.add("active");
@@ -1722,7 +2189,7 @@
 
             // Smooth pan scroll to chapter start year
             const wrap = document.getElementById("chartScrollWrap");
-            const targetX = yearToX(step.scrollYear, chartLayout.totalW) - LEFT_LABEL_W - 20;
+            const targetX = yearToX(step.scrollYear, chartLayout.totalW) - 24;
             wrap.scrollTo({
                 left: Math.max(0, targetX),
                 top: 0,
@@ -1747,9 +2214,31 @@
         function exportChartPNG() {
             const svg = document.getElementById("adamsSvg");
             const clone = svg.cloneNode(true);
-            const hdrClone = clone.querySelector("#streamHeaderColumn");
-            if (hdrClone) hdrClone.setAttribute("transform", "translate(0, 0)");
-            const styleEl = document.createElementNS("http://www.w3.org/2000/svg", "style");
+            const exportW = STICKY_COL_W + chartLayout.totalW;
+            clone.setAttribute("width", exportW);
+            clone.setAttribute("viewBox", `${-STICKY_COL_W} 0 ${exportW} ${chartLayout.totalH}`);
+
+            const ns = "http://www.w3.org/2000/svg";
+            function mk(tag, attrs = {}, txt = null) {
+                const n = document.createElementNS(ns, tag);
+                for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+                if (txt !== null) n.textContent = txt;
+                return n;
+            }
+            const legendG = mk("g", { transform: `translate(${-STICKY_COL_W}, 0)` });
+            legendG.appendChild(mk("rect", { x: 0, y: 0, width: STICKY_COL_W, height: chartLayout.totalH, fill: "var(--surface)", stroke: "var(--border)", "stroke-width": 2 }));
+            legendG.appendChild(mk("text", { x: STICKY_COL_W / 2, y: 40, "text-anchor": "middle", "font-size": 12.5, fill: "var(--text)", class: "adams-title-tech" }, "CARTA DE ADAMS"));
+            legendG.appendChild(mk("text", { x: STICKY_COL_W / 2, y: 58, "text-anchor": "middle", "font-size": 9, fill: "var(--subtle)", class: "adams-mono" }, "4004 a.C. — 100 d.C."));
+            legendG.appendChild(mk("line", { x1: 0, y1: TOP_HEADER_H, x2: STICKY_COL_W, y2: TOP_HEADER_H, stroke: "var(--border)", "stroke-width": 2 }));
+            chartLayout.streamBoxes.forEach(box => {
+                legendG.appendChild(mk("rect", { x: 0, y: box.y, width: STICKY_COL_W, height: box.height, fill: box.stream.bg, stroke: "var(--border)", "stroke-width": 1 }));
+                legendG.appendChild(mk("rect", { x: 7, y: box.y + 10, width: 5, height: box.height - 20, fill: box.stream.bar, stroke: "var(--border)", "stroke-width": 1 }));
+                legendG.appendChild(mk("text", { x: 18, y: box.y + 24, "font-size": 10.5, "font-weight": 800, fill: "var(--text)" }, box.stream.title));
+                legendG.appendChild(mk("text", { x: 18, y: box.y + 39, "font-size": 8.5, fill: "var(--muted)" }, box.stream.sub));
+            });
+            clone.appendChild(legendG);
+
+            const styleEl = document.createElementNS(ns, "style");
             styleEl.textContent = `
                 text { font-family: Inter, system-ui, sans-serif; }
                 .adams-title-tech { font-family: Inter, system-ui, sans-serif; font-weight: 800; }
@@ -1775,9 +2264,9 @@
             const url = URL.createObjectURL(svgBlob);
             const img = new Image();
             img.onload = () => {
-                const scale = Math.min(2, Math.floor(14000 / chartLayout.totalW) || 1);
+                const scale = Math.min(2, Math.floor(14000 / exportW) || 1);
                 const canvas = document.createElement("canvas");
-                canvas.width = chartLayout.totalW * scale;
+                canvas.width = exportW * scale;
                 canvas.height = chartLayout.totalH * scale;
                 const ctx = canvas.getContext("2d");
                 ctx.fillStyle = bgVal;
@@ -1837,10 +2326,10 @@
                 if (isDragging || isPresenting) return;
                 if (!document.getElementById("chkFollowMouse").checked) return;
                 const wrapRect = wrap.getBoundingClientRect();
-                if (e.clientX - wrapRect.left <= LEFT_LABEL_W) return;
+                if (e.clientX - wrapRect.left <= getStickyColW()) return;
                 const rect = svg.getBoundingClientRect();
                 const svgX = e.clientX - rect.left;
-                if (svgX > LEFT_LABEL_W) {
+                if (svgX >= 0) {
                     const yr = xToYear(svgX, chartLayout.totalW);
                     updateScannerYear(yr, true);
                 }
@@ -1849,20 +2338,16 @@
             svg.addEventListener("click", e => {
                 if (moved) return;
                 const wrapRect = wrap.getBoundingClientRect();
-                if (e.clientX - wrapRect.left <= LEFT_LABEL_W) return;
+                if (e.clientX - wrapRect.left <= getStickyColW()) return;
                 const rect = svg.getBoundingClientRect();
                 const svgX = e.clientX - rect.left;
-                if (svgX > LEFT_LABEL_W) {
+                if (svgX >= 0) {
                     const yr = xToYear(svgX, chartLayout.totalW);
                     updateScannerYear(yr, true);
                 }
             });
 
-            wrap.addEventListener("scroll", () => {
-                updateMinimapViewport();
-                const hdr = document.getElementById("streamHeaderColumn");
-                if (hdr) hdr.setAttribute("transform", `translate(${wrap.scrollLeft}, 0)`);
-            });
+            wrap.addEventListener("scroll", updateMinimapViewport);
 
             // Ctrl + Wheel Zoom
             wrap.addEventListener("wheel", e => {
@@ -1878,7 +2363,8 @@
             function jumpMinimap(clientX) {
                 const r = mm.getBoundingClientRect();
                 const pct = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
-                wrap.scrollLeft = pct * chartLayout.totalW - wrap.clientWidth / 2;
+                const visibleChartW = Math.max(80, wrap.clientWidth - getStickyColW());
+                wrap.scrollLeft = Math.max(0, pct * chartLayout.totalW - visibleChartW / 2);
             }
             mm.addEventListener("mousedown", e => { mmDrag = true; jumpMinimap(e.clientX); });
             window.addEventListener("mousemove", e => { if (mmDrag) jumpMinimap(e.clientX); });
@@ -2030,6 +2516,7 @@
             }
             initWhenReady();
         });
+        window.addEventListener("resize", updateMinimapViewport);
     </script>
 </body>
 </html>
